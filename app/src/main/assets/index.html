@@ -30,7 +30,7 @@ h1 span{color:var(--accent)}
 .mpeak{position:absolute;top:0;bottom:0;width:2px;background:var(--text);left:0}
 .m output{text-align:right;font-variant-numeric:tabular-nums}
 .m output.clip{color:var(--hot)}
-.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
 .tab{background:none;border:0;border-bottom:2px solid transparent;padding:9px 2px 8px;font-size:14px;color:var(--muted);cursor:pointer}
 .tab[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
 main{max-width:760px;margin:0 auto;padding:14px 12px 96px}
@@ -86,7 +86,15 @@ select{background:var(--panel-2);border:1px solid var(--line);border-radius:7px;
 .save{padding:11px 24px;border-radius:10px;border:0;background:var(--accent);color:#1a1307;font-weight:600;font-size:16px;cursor:pointer}
 #msg{font-size:13px;color:var(--muted);min-width:80px}
 .hidden{display:none !important}
-body:not(.linked) main .card,body:not(.linked) .bar .save{opacity:.45;pointer-events:none}
+body:not(.linked) main .pane:not([data-pane="rta"]) .card,body:not(.linked) .bar .save{opacity:.45;pointer-events:none}
+.rtabtns{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.rtabtns .abtn{padding:11px 4px}
+.abtn.go[aria-pressed="true"]{border-color:var(--good);color:var(--good)}
+.abtn.hold[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+.abtn.pink[aria-pressed="true"]{border-color:#f29bd0;color:#f29bd0}
+.rtaread{display:flex;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:8px;font-variant-numeric:tabular-nums}
+.rtaread b{color:var(--text);font-weight:500}
+.rtaread span:last-child{white-space:nowrap}
 </style>
 </head>
 <body>
@@ -111,6 +119,7 @@ body:not(.linked) main .card,body:not(.linked) .bar .save{opacity:.45;pointer-ev
     <button class="tab" role="tab" data-tab="lr" aria-selected="false">ซ้าย-ขวา</button>
     <button class="tab" role="tab" data-tab="sub" aria-selected="false">ซับเบส</button>
     <button class="tab" role="tab" data-tab="fx" aria-selected="false">เอฟเฟกต์</button>
+    <button class="tab" role="tab" data-tab="rta" aria-selected="false">RTA</button>
   </nav>
 </div></div>
 
@@ -215,6 +224,24 @@ body:not(.linked) main .card,body:not(.linked) .bar .save{opacity:.45;pointer-ev
       <div class="ctls" id="c-rev"></div>
     </div>
   </section>
+
+  <!-- ================= RTA ================= -->
+  <section class="pane" data-pane="rta" hidden>
+    <div class="card">
+      <div class="head"><h2>RTA <small>1/3 octave · 20 Hz – 20 kHz</small></h2>
+        <select id="rtaSpd" aria-label="ความเร็วการตอบสนอง"><option value="0.125">เร็ว (Fast)</option><option value="1" selected>ช้า (Slow)</option></select></div>
+      <div class="graph"><canvas id="gRta" aria-label="กราฟ RTA 1/3 octave"></canvas></div>
+      <div class="rtaread"><span id="rtaSel">แตะแท่งกราฟเพื่อดูค่า</span><span>รวม <b id="rtaSum">–</b></span></div>
+      <div class="rtabtns">
+        <button class="abtn go" id="rtaRun" aria-pressed="false">เริ่มวัด</button>
+        <button class="abtn hold" id="rtaHold" aria-pressed="false">ค้างค่าสูงสุด</button>
+        <button class="abtn pink" id="rtaPink" aria-pressed="false">Pink noise</button>
+      </div>
+      <div class="ctls" id="c-pink" style="margin-top:12px"></div>
+      <p class="note" id="rtaMsg">ใช้ไมค์มือถือวัดเสียงจริง · ระดับเป็น dB เทียบ full scale ของไมค์ (ไม่ใช่ dB SPL)</p>
+      <p class="note">วิธีจูน: เล่น pink noise ผ่านระบบเสียง วางมือถือที่ตำแหน่งฟัง แล้วปรับ EQ ให้แท่งกราฟเรียบที่สุด · ไมค์มือถือไม่แม่นที่ย่านต่ำกว่า ~50 Hz และสูงกว่า ~12 kHz</p>
+    </div>
+  </section>
 </main>
 
 <div class="bar">
@@ -289,7 +316,7 @@ window.bleOnStatus=(t,bad)=>msg(t,bad);
 
 /* ---------- แท็บ ---------- */
 function showTab(t){$$('.tab').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));$$('.pane').forEach(p=>p.hidden=p.dataset.pane!==t);
-  try{localStorage.setItem('dspTab',t)}catch(e){} graphs.forEach(g=>g.resize());}
+  try{localStorage.setItem('dspTab',t)}catch(e){} graphs.forEach(g=>g.resize());rta.resize();}
 $$('.tab').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
 
 /* ---------- ตัวควบคุม ---------- */
@@ -483,6 +510,108 @@ function meters(m){
   setMeter('in',Math.max(m.il,m.ir));['ol','or','os'].forEach(k=>{if(m[k]!==undefined)setMeter(k,m[k]);});
   $('#grFill').style.width=clamp(-m.gr/20,0,1)*100+'%';$('#grOut').textContent=fmtDb(m.gr);
   $('#cpu').textContent='CPU '+Math.round(m.cpu)+'%';}
+
+/* ---------- RTA: วัดเสียงจากไมค์ 1/3 octave ---------- */
+const rta=(()=>{
+  const FC=[20,25,31.5,40,50,63,80,100,125,160,200,250,315,400,500,630,800,1000,1250,1600,2000,2500,3150,4000,5000,6300,8000,10000,12500,16000,20000];
+  const NBD=FC.length,TOP=0,BOT=-100,FFT=16384;
+  const cv=$('#gRta'),g=cv.getContext('2d'),G={W:0,H:0,L:8,R:0,T:10,B:0};let dpr=1;
+  let ac=null,an=null,stream=null,src=null,noise=null,noiseGain=null,buf=null,W=null,running=false,raf=0,last=0,sel=-1;
+  const lvl=new Float32Array(NBD).fill(-Infinity),pk=new Float32Array(NBD).fill(-Infinity);
+  let hold=false,pinkDb=-12;
+  const msgEl=$('#rtaMsg'),defMsg=msgEl.textContent;
+  const say=(t,bad)=>{msgEl.textContent=t||defMsg;msgEl.style.color=bad?'var(--hot)':'';};
+  const fmtF=f=>f>=1000?(f/1000)+'k':String(f);
+  const fmtL=v=>isFinite(v)?(v<0?'−':'')+Math.abs(v).toFixed(1)+' dB':'–';
+  function ctx(){if(!ac){const C=window.AudioContext||window.webkitAudioContext;if(!C)throw new Error('อุปกรณ์นี้ไม่รองรับ Web Audio');ac=new C();}
+    if(ac.state==='suspended')ac.resume();return ac;}
+  // น้ำหนักของแต่ละ FFT bin ในแต่ละแบนด์ (นับส่วนที่ซ้อนกันของช่วงความถี่)
+  function weights(){const fs=ac.sampleRate,df=fs/FFT,nyq=fs/2;W=FC.map(fc=>{
+    const lo=fc*Math.pow(2,-1/6),hi=Math.min(fc*Math.pow(2,1/6),nyq),w=[];
+    if(lo>=nyq)return w;
+    const k0=Math.max(1,Math.floor(lo/df-.5)),k1=Math.min(FFT/2-1,Math.ceil(hi/df+.5));
+    for(let k=k0;k<=k1;k++){const a=Math.max(lo,(k-.5)*df),b=Math.min(hi,(k+.5)*df);if(b>a)w.push(k,(b-a)/df);}
+    return w;});}
+  async function start(){
+    if(running)return;
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){say('อุปกรณ์นี้ใช้ไมค์ผ่านหน้าเว็บไม่ได้',1);return;}
+    say('กำลังขอใช้ไมค์…');
+    try{
+      stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+    }catch(e){stream=null;say(e&&e.name==='NotAllowedError'?'ไม่ได้รับอนุญาตให้ใช้ไมค์ · เปิดสิทธิ์ไมโครโฟนให้แอปในการตั้งค่า':'เปิดไมค์ไม่สำเร็จ: '+(e&&e.message||e),1);setRun(false);return;}
+    try{ctx();}catch(e){say(e.message,1);stop();return;}
+    an=ac.createAnalyser();an.fftSize=FFT;an.smoothingTimeConstant=0;an.minDecibels=-140;an.maxDecibels=0;
+    src=ac.createMediaStreamSource(stream);src.connect(an);
+    buf=new Float32Array(an.frequencyBinCount);weights();
+    lvl.fill(-Infinity);running=true;last=0;setRun(true);say('');
+    raf=requestAnimationFrame(tick);
+  }
+  function stop(){
+    running=false;cancelAnimationFrame(raf);
+    if(src){try{src.disconnect();}catch(e){}src=null;}
+    if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
+    an=null;setRun(false);draw();
+  }
+  function setRun(on){const b=$('#rtaRun');b.setAttribute('aria-pressed',on);b.textContent=on?'หยุด':'เริ่มวัด';}
+  function tick(t){
+    if(!running)return;
+    an.getFloatFrequencyData(buf);
+    const dt=last?Math.min((t-last)/1000,.5):0;last=t;
+    const tau=+$('#rtaSpd').value,a=dt?1-Math.exp(-dt/tau):1;
+    for(let i=0;i<NBD;i++){const w=W[i];let p=0;
+      for(let j=0;j<w.length;j+=2)p+=Math.pow(10,buf[w[j]]/10)*w[j+1];
+      const prev=isFinite(lvl[i])?Math.pow(10,lvl[i]/10):0,s=prev+(p-prev)*a;
+      lvl[i]=s>0?10*Math.log10(s):-Infinity;
+      if(hold&&lvl[i]>pk[i])pk[i]=lvl[i];}
+    if(!cv.closest('.pane').hidden)draw();
+    raf=requestAnimationFrame(tick);
+  }
+  const xOf=i=>G.L+i/NBD*(G.R-G.L),yOf=d=>G.T+(TOP-clamp(d,BOT,TOP))/(TOP-BOT)*(G.B-G.T);
+  function resize(){const r=cv.getBoundingClientRect();if(!r.width)return;dpr=window.devicePixelRatio||1;G.W=r.width;G.H=r.height;G.R=G.W-34;G.B=G.H-22;cv.width=r.width*dpr;cv.height=r.height*dpr;draw();}
+  function draw(){if(!G.W)return;g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,G.W,G.H);g.font='11px '+MONO;g.lineWidth=1;
+    for(let d=TOP;d>=BOT;d-=10){const y=Math.round(yOf(d))+.5;g.strokeStyle=COL.line;g.globalAlpha=.6;g.beginPath();g.moveTo(G.L,y);g.lineTo(G.R,y);g.stroke();g.globalAlpha=1;
+      if(d%20===0){g.fillStyle=COL.muted;g.textAlign='left';g.fillText(d<0?'−'+(-d):String(d),G.R+5,y+4);}}
+    const bw=(G.R-G.L)/NBD,gap=Math.max(1,bw*.18);
+    [20,50,100,200,500,1000,2000,5000,10000,20000].forEach(f=>{const i=FC.indexOf(f),x=xOf(i)+bw/2;
+      g.fillStyle=COL.muted;g.textAlign='center';g.fillText(fmtF(f),clamp(x,G.L+8,G.R-8),G.H-6);});
+    for(let i=0;i<NBD;i++){const x=xOf(i)+gap/2,w=bw-gap;
+      if(isFinite(lvl[i])&&lvl[i]>BOT){const y=yOf(lvl[i]);g.fillStyle=i===sel?COL.accent:COL.signal;g.globalAlpha=running?.9:.4;g.fillRect(x,y,w,G.B-y);g.globalAlpha=1;}
+      if(hold&&isFinite(pk[i])&&pk[i]>BOT){const y=Math.round(yOf(pk[i]))+.5;g.strokeStyle=COL.accent;g.lineWidth=2;g.beginPath();g.moveTo(x,y);g.lineTo(x+w,y);g.stroke();g.lineWidth=1;}}
+    readout();}
+  function readout(){let tot=0;for(let i=0;i<NBD;i++)if(isFinite(lvl[i]))tot+=Math.pow(10,lvl[i]/10);
+    $('#rtaSum').textContent=tot>0?fmtL(10*Math.log10(tot)):'–';
+    if(sel>=0)$('#rtaSel').textContent=fmtHz(FC[sel])+' · '+fmtL(lvl[sel])+(hold?' · สูงสุด '+fmtL(pk[sel]):'');}
+  cv.addEventListener('pointerdown',e=>{const r=cv.getBoundingClientRect(),x=e.clientX-r.left;
+    if(x<G.L||x>G.R)return;const i=clamp(Math.floor((x-G.L)/(G.R-G.L)*NBD),0,NBD-1);sel=sel===i?-1:i;
+    if(sel<0)$('#rtaSel').textContent='แตะแท่งกราฟเพื่อดูค่า';draw();});
+  new ResizeObserver(resize).observe(cv.parentElement);
+  // ---- pink noise (Paul Kellet) วนลูปบัฟเฟอร์ 10 วินาที ----
+  function pinkBuffer(){const n=ac.sampleRate*10,bf=ac.createBuffer(1,n,ac.sampleRate),d=bf.getChannelData(0);
+    let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0,mx=0;
+    for(let i=0;i<n;i++){const w=Math.random()*2-1;
+      b0=.99886*b0+w*.0555179;b1=.99332*b1+w*.0750759;b2=.969*b2+w*.153852;b3=.8665*b3+w*.3104856;b4=.55*b4+w*.5329522;b5=-.7616*b5-w*.016898;
+      d[i]=b0+b1+b2+b3+b4+b5+b6+w*.5362;b6=w*.115926;mx=Math.max(mx,Math.abs(d[i]));}
+    // fade รอยต่อลูปสั้นๆ กันเสียงคลิก
+    const fd=Math.round(ac.sampleRate*.005);for(let i=0;i<fd;i++){d[i]*=i/fd;d[n-1-i]*=i/fd;}
+    for(let i=0;i<n;i++)d[i]/=mx;return bf;}
+  let pinkBuf=null;
+  function pinkOn(){try{ctx();}catch(e){say(e.message,1);return;}
+    if(!pinkBuf)pinkBuf=pinkBuffer();
+    noiseGain=ac.createGain();noiseGain.gain.value=0;noiseGain.connect(ac.destination);
+    noise=ac.createBufferSource();noise.buffer=pinkBuf;noise.loop=true;noise.connect(noiseGain);noise.start();
+    noiseGain.gain.setTargetAtTime(Math.pow(10,pinkDb/20),ac.currentTime,.05);setPink(true);}
+  function pinkOff(){if(noise){const n=noise,gn=noiseGain;gn.gain.setTargetAtTime(0,ac.currentTime,.03);setTimeout(()=>{try{n.stop();}catch(e){}n.disconnect();gn.disconnect();},200);}
+    noise=null;noiseGain=null;setPink(false);}
+  function setPink(on){$('#rtaPink').setAttribute('aria-pressed',on);$('#rtaPink').textContent=on?'หยุด Pink noise':'Pink noise';}
+  slider($('#c-pink'),{label:'ระดับ Pink noise',min:-40,max:0,step:1,def:-12,fmt:fmtDb,get:()=>pinkDb,
+    set:v=>{pinkDb=v;if(noiseGain)noiseGain.gain.setTargetAtTime(Math.pow(10,v/20),ac.currentTime,.05);},send:()=>({})});
+  $('#rtaRun').onclick=()=>running?stop():start();
+  $('#rtaHold').onclick=()=>{hold=!hold;pk.fill(-Infinity);$('#rtaHold').setAttribute('aria-pressed',hold);draw();};
+  $('#rtaPink').onclick=()=>noise?pinkOff():pinkOn();
+  // แอปถูกพับไปพื้นหลัง: ปิดไมค์และเสียงทดสอบ
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){if(running)stop();if(noise)pinkOff();}});
+  return {resize};
+})();
 
 /* ---------- ปุ่ม ---------- */
 $('#connBtn').onclick=connect;
