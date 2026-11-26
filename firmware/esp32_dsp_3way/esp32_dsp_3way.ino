@@ -34,6 +34,7 @@
 #include <BLEUtils.h>
 #include <BLE2902.h>
 #include <freertos/stream_buffer.h>
+#include <esp_heap_caps.h>
 #include "BluetoothA2DPSink.h"
 
 // ===================== ตัวเลือก =====================
@@ -244,7 +245,7 @@ struct OutCh {
   XF hp, lp; EQ6 eq;
   float g = 0, gT = 0;                 // เกนเชิงเส้น (รวม vol, เฟส, ปิดเสียง)
   float dl = 0, dlT = 0;               // ดีเลย์ (sample)
-  float buf[DLY_LEN] = {0}; int w = 0;
+  float *buf = nullptr; int w = 0;     // บัฟเฟอร์ดีเลย์ (จองใน PSRAM ตอน setup)
   float limTh = 1, limA = 0, limR = 0, lg = 1; bool limOn = true, mute = false;
   float peak = 0, grMax = 0;
 };
@@ -301,7 +302,7 @@ void applyParams(bool snap) {
 i2s_chan_handle_t tx1 = nullptr, tx2 = nullptr;
 void i2sOpen(i2s_port_t port, int bck, int lck, int din, i2s_chan_handle_t *h) {
   i2s_chan_config_t cc = I2S_CHANNEL_DEFAULT_CONFIG(port, I2S_ROLE_MASTER);
-  cc.dma_desc_num = 6; cc.dma_frame_num = 256; cc.auto_clear = true;
+  cc.dma_desc_num = 4; cc.dma_frame_num = 256; cc.auto_clear = true;
   ESP_ERROR_CHECK(i2s_new_channel(&cc, h, nullptr));
   i2s_std_config_t sc;
   memset(&sc, 0, sizeof(sc));
@@ -321,7 +322,7 @@ void i2sOpen(i2s_port_t port, int bck, int lck, int din) {
   c.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX);
   c.sample_rate = 44100; c.bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT;
   c.channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT; c.communication_format = I2S_COMM_FORMAT_STAND_I2S;
-  c.intr_alloc_flags = 0; c.dma_buf_count = 6; c.dma_buf_len = 256; c.use_apll = false; c.tx_desc_auto_clear = true;
+  c.intr_alloc_flags = 0; c.dma_buf_count = 4; c.dma_buf_len = 256; c.use_apll = false; c.tx_desc_auto_clear = true;
   i2s_driver_install(port, &c, 0, nullptr);
   i2s_pin_config_t p = {};
   p.mck_io_num = I2S_PIN_NO_CHANGE; p.bck_io_num = bck; p.ws_io_num = lck; p.data_out_num = din; p.data_in_num = I2S_PIN_NO_CHANGE;
@@ -374,7 +375,7 @@ void dspTask(void *) {
       portENTER_CRITICAL(&pmux); D.mode = P.mode; portEXIT_CRITICAL(&pmux);
       applyParams(true);
       for (auto &i : inp) { i.eq.clear(); i.ss.clear(); }
-      for (auto &o : oc) { o.hp.clear(); o.lp.clear(); o.eq.clear(); memset(o.buf, 0, sizeof(o.buf)); o.lg = 1; }
+      for (auto &o : oc) { o.hp.clear(); o.lp.clear(); o.eq.clear(); memset(o.buf, 0, DLY_LEN * sizeof(float)); o.lg = 1; }
       pendingMode = false; fadeT = 1;
     }
 
@@ -623,6 +624,12 @@ void handleLine(String line) {
 }
 
 // ===================== setup / loop =====================
+// จองหน่วยความจำใน PSRAM ก่อน (เหลือ RAM ภายในไว้ให้ Bluetooth) ถ้าไม่มี PSRAM ใช้ RAM ปกติ
+void *psAlloc(size_t n) {
+  void *p = heap_caps_calloc(1, n, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  if (!p) p = calloc(1, n);
+  return p;
+}
 void onA2dpConn(esp_a2d_connection_state_t st, void *) {
   const char *t[] = {"ตัดการเชื่อมต่อ", "กำลังเชื่อมต่อ", "เชื่อมต่อแล้ว", "กำลังตัดการเชื่อมต่อ"};
   Serial.printf("[A2DP] %s\n", (int)st < 4 ? t[st] : "?");
@@ -648,7 +655,9 @@ void setup() {
   pDirty = true;
   Serial.println("[บูต] 1/5 โหลดค่าจาก NVS แล้ว");
 
-  sb = xStreamBufferCreate(SB_SIZE, 1);
+  static StaticStreamBuffer_t sbStruct;
+  sb = xStreamBufferCreateStatic(SB_SIZE, 1, (uint8_t *)psAlloc(SB_SIZE + 1), &sbStruct);
+  for (auto &o : oc) o.buf = (float *)psAlloc(DLY_LEN * sizeof(float));
   lineQ = xQueueCreate(16, sizeof(char *));
 
 #if NEW_I2S
