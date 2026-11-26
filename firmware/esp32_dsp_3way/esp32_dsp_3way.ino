@@ -682,8 +682,15 @@ void setup() {
   BLECharacteristic *rx = svc->createCharacteristic(RX_UUID, BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR);
   rx->setCallbacks(new RxCb());
   svc->start();
+  // ค่าเริ่มต้นของไลบรารีประกาศ "BR/EDR not supported" แต่ A2DP กับ BLE ใช้ที่อยู่เดียวกัน
+  // Android จึงเข้าใจว่าเป็นอุปกรณ์ BLE อย่างเดียว แล้วจับคู่ฟังเพลงไม่ได้ → ประกาศว่ารองรับทั้งสองแบบ
   BLEAdvertising *adv = BLEDevice::getAdvertising();
-  adv->addServiceUUID(NUS_UUID);
+  BLEAdvertisementData ad, sr;
+  ad.setFlags(ESP_BLE_ADV_FLAG_GEN_DISC | ESP_BLE_ADV_FLAG_DMT_CONTROLLER_SPT | ESP_BLE_ADV_FLAG_DMT_HOST_SPT);
+  ad.setCompleteServices(BLEUUID(String(NUS_UUID)));
+  sr.setName(BT_NAME);
+  adv->setAdvertisementData(ad);
+  adv->setScanResponseData(sr);
   adv->setScanResponse(true);
   adv->start();
   Serial.printf("[บูต] 4/5 BLE ประกาศตัวแล้ว · RAM ว่าง %u\n", (unsigned)ESP.getFreeHeap());
