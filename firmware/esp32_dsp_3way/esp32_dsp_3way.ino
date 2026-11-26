@@ -493,8 +493,8 @@ QueueHandle_t lineQ;
 String rxBuf;
 
 class SrvCb : public BLEServerCallbacks {
-  void onConnect(BLEServer *) override { bleConn = true; }
-  void onDisconnect(BLEServer *s) override { bleConn = false; s->getAdvertising()->start(); }
+  void onConnect(BLEServer *) override { bleConn = true; Serial.println("[BLE] แอปเชื่อมต่อแล้ว"); }
+  void onDisconnect(BLEServer *s) override { bleConn = false; Serial.println("[BLE] แอปตัดการเชื่อมต่อ · ประกาศตัวใหม่"); s->getAdvertising()->start(); }
 };
 class RxCb : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic *c) override {
@@ -623,8 +623,20 @@ void handleLine(String line) {
 }
 
 // ===================== setup / loop =====================
+void onA2dpConn(esp_a2d_connection_state_t st, void *) {
+  const char *t[] = {"ตัดการเชื่อมต่อ", "กำลังเชื่อมต่อ", "เชื่อมต่อแล้ว", "กำลังตัดการเชื่อมต่อ"};
+  Serial.printf("[A2DP] %s\n", (int)st < 4 ? t[st] : "?");
+}
+void onA2dpAudio(esp_a2d_audio_state_t st, void *) {
+  Serial.printf("[A2DP] เสียง: %s\n", st == ESP_A2D_AUDIO_STATE_STARTED ? "เริ่มเล่น" : "หยุด");
+}
+
 void setup() {
   Serial.begin(115200);
+  delay(300);
+  Serial.printf("\n\n[บูต] DSP Rack v2 · core %d.%d.%d · ชิป rev %d · RAM ว่าง %u · PSRAM %u\n",
+                ESP_ARDUINO_VERSION_MAJOR, ESP_ARDUINO_VERSION_MINOR, ESP_ARDUINO_VERSION_PATCH,
+                (int)ESP.getChipRevision(), (unsigned)ESP.getFreeHeap(), (unsigned)ESP.getPsramSize());
   defaults(P);
   buildKeys();
   prefs.begin("dsp", false);
@@ -634,6 +646,7 @@ void setup() {
   lockCode = prefs.getUShort("lk", 0); locked = prefs.getUChar("lkd", 0) && lockCode;
   loadPresetNames();
   pDirty = true;
+  Serial.println("[บูต] 1/5 โหลดค่าจาก NVS แล้ว");
 
   sb = xStreamBufferCreate(SB_SIZE, 1);
   lineQ = xQueueCreate(16, sizeof(char *));
@@ -649,14 +662,18 @@ void setup() {
   i2sOpen(I2S_NUM_1, DAC2_BCK, DAC2_LCK, DAC2_DIN);
 #endif
 #endif
+  Serial.printf("[บูต] 2/5 เปิด I2S แล้ว (DAC2 %s)\n", USE_DAC2 ? "เปิด" : "ปิด");
 
   // A2DP ก่อน แล้วจึง BLE (ใช้คอนโทรลเลอร์โหมด BTDM ร่วมกัน)
   a2dp.set_default_bt_mode(ESP_BT_MODE_BTDM);
   a2dp.set_stream_reader(onAudio, false);
   a2dp.set_auto_reconnect(true);
+  a2dp.set_on_connection_state_changed(onA2dpConn);
+  a2dp.set_on_audio_state_changed(onA2dpAudio);
   a2dp.start(BT_NAME);
+  Serial.printf("[บูต] 3/5 A2DP เริ่มแล้ว · ชื่อ \"%s\" · RAM ว่าง %u\n", BT_NAME, (unsigned)ESP.getFreeHeap());
 
-  BLEDevice::init(BT_NAME);
+  if (!BLEDevice::init(BT_NAME)) Serial.println("[บูต] !! BLE เริ่มไม่สำเร็จ (แอปจะเชื่อมต่อไม่ได้ แต่ฟังเพลงได้)");
   BLEServer *srv = BLEDevice::createServer();
   srv->setCallbacks(new SrvCb());
   BLEService *svc = srv->createService(NUS_UUID);
@@ -669,8 +686,10 @@ void setup() {
   adv->addServiceUUID(NUS_UUID);
   adv->setScanResponse(true);
   adv->start();
+  Serial.printf("[บูต] 4/5 BLE ประกาศตัวแล้ว · RAM ว่าง %u\n", (unsigned)ESP.getFreeHeap());
 
   xTaskCreatePinnedToCore(dspTask, "dsp", 8192, nullptr, configMAX_PRIORITIES - 2, nullptr, 1);
+  Serial.println("[บูต] 5/5 DSP ทำงานแล้ว");
   Serial.println(F("\nDSP Rack v2 พร้อมทำงาน · Bluetooth: \"" BT_NAME "\""));
   serHelp();
 }
