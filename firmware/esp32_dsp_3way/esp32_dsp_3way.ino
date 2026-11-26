@@ -508,7 +508,11 @@ class RxCb : public BLECharacteristicCallbacks {
   }
 };
 
+bool serReply = false;   // กำลังตอบคำสั่งที่มาจาก Serial Monitor
+uint8_t serMeter = 0;    // 1 = พิมพ์มิเตอร์ลง Serial ต่อเนื่อง
+
 void bleSend(const String &s) {
+  if (serReply) Serial.println(s);
   if (!bleConn) return;
   String m = s + "\n";
   for (size_t i = 0; i < m.length(); i += 20) {
@@ -667,13 +671,96 @@ void setup() {
   adv->start();
 
   xTaskCreatePinnedToCore(dspTask, "dsp", 8192, nullptr, configMAX_PRIORITIES - 2, nullptr, 1);
+  Serial.println(F("\nDSP Rack v2 พร้อมทำงาน · Bluetooth: \"" BT_NAME "\""));
+  serHelp();
 }
 
 static float todb(float a) { return a > 1e-5f ? 20 * log10f(a) : -100; }
 
+// ===================== Serial Monitor (115200, ส่งแบบ Newline) =====================
+void serHelp() {
+  Serial.println(F("\n=== DSP Rack v2 · คำสั่ง Serial Monitor (115200 baud, Newline) ==="));
+  Serial.println(F("help            แสดงคำสั่งทั้งหมด"));
+  Serial.println(F("status          สถานะ: A2DP, BLE, CPU, บัฟเฟอร์, หน่วยความจำ"));
+  Serial.println(F("show            ค่าที่ตั้งไว้ทั้งหมดแบบอ่านง่าย"));
+  Serial.println(F("meter           เปิด/ปิด มิเตอร์ต่อเนื่อง (ทุก 0.5 วินาที)"));
+  Serial.println(F("get             ค่าทั้งหมดแบบ JSON (เหมือนที่ส่งให้แอป)"));
+  Serial.println(F("k=v&k=v         ตั้งค่า เช่น vol=-20  หรือ  x1=90&x2=3000  หรือ  c0gn=-3"));
+  Serial.println(F("save / reset    บันทึกลงเครื่อง / กลับค่าเริ่มต้น"));
+  Serial.println(F("preset_load=0   โหลดพรีเซ็ต (0-4) · preset_save=0&name=Home"));
+  Serial.println(F("lock=1234 / unlock=1234"));
+  Serial.println(F("คีย์: mode vol ing bal ieq ss ssf sss x1 x2 ft0-3 fs0-3"));
+  Serial.println(F("     ช่อง c0=ซับ c1=กลาง/ซ้าย c2=แหลม/ขวา: gn dl iv mu so lt la lr lo eq"));
+  Serial.println(F("     แบนด์อีคิว: i(ขาเข้า)/c0/c1/c2 + t f g q e + เลขแบนด์ 0-5 เช่น c1g2=-3"));
+}
+
+void serStatus() {
+  Serial.printf("\n--- สถานะ (uptime %lu s) ---\n", (unsigned long)(millis() / 1000));
+  Serial.printf("A2DP : %s, sample rate %u Hz, บัฟเฟอร์ %u/%u ไบต์\n",
+                a2dp.is_connected() ? "เชื่อมต่อแล้ว" : "ยังไม่เชื่อมต่อ", (unsigned)a2dp.sample_rate(),
+                (unsigned)xStreamBufferBytesAvailable(sb), (unsigned)SB_SIZE);
+  Serial.printf("BLE  : %s\n", bleConn ? "แอปเชื่อมต่ออยู่" : "ไม่มีแอปเชื่อมต่อ");
+  Serial.printf("CPU  : %.0f%% (คอร์ 1)\n", (float)cpuLoad);
+  Serial.printf("RAM  : ว่าง %u ไบต์, PSRAM %u ไบต์\n", (unsigned)ESP.getFreeHeap(), (unsigned)ESP.getPsramSize());
+  Serial.printf("DAC2 : %s\n", USE_DAC2 ? "ใช้งาน" : "ปิด (ซับรวมเข้า DAC1)");
+  Serial.printf("ล็อก : %s · พรีเซ็ต: %d %s\n", locked ? "ล็อกอยู่" : "ไม่ได้ล็อก", activePreset + 1,
+                activePreset >= 0 ? presetNames[activePreset] : "(ไม่ได้เลือก)");
+}
+
+void serShow() {
+  Params p; portENTER_CRITICAL(&pmux); p = P; portEXIT_CRITICAL(&pmux);
+  const char *SL[3] = {"12", "24", "48"}, *TY[2] = {"BW", "LR"}, *BT[3] = {"peak", "lowshelf", "highshelf"};
+  bool st = p.mode == 1;
+  const char *CN[3] = {"ซับ", st ? "ซ้าย" : "กลาง", st ? "ขวา" : "แหลม"};
+  Serial.printf("\n--- ค่าปัจจุบัน ---\nโหมด: %s · วอลุ่ม %.1f dB · เกนขาเข้า %.1f dB%s\n", st ? "สเตอริโอ 2.1" : "โมโน 3 ทาง",
+                p.vol, p.inG, st ? (" · บาลานซ์ " + String(p.bal, 0)).c_str() : "");
+  Serial.printf("Subsonic: %s %.0f Hz %s dB\n", p.ssOn ? "ON" : "OFF", p.ssF, p.ssSl ? "24" : "12");
+  Serial.printf("ครอส: x1 %.0f Hz", p.x1);
+  if (!st) Serial.printf(" · x2 %.0f Hz", p.x2);
+  Serial.println();
+  const char *FN[4] = {"ซับ LP", "กลาง HP", "กลาง LP", "แหลม HP"};
+  for (int i = 0; i < (st ? 2 : 4); i++) Serial.printf("  %-8s %s %s dB/oct\n", FN[i], TY[p.ft[i]], SL[p.fs[i]]);
+  Serial.printf("อีคิวขาเข้า (%s):", p.ieqOn ? "ON" : "OFF");
+  for (int b = 0; b < NB; b++) if (p.ieq[b].on && fabsf(p.ieq[b].g) > 0.01f) Serial.printf(" [%d %s %.0fHz %+.1fdB Q%.2f]", b + 1, BT[p.ieq[b].t], p.ieq[b].f, p.ieq[b].g, p.ieq[b].q);
+  Serial.println();
+  for (int c = 0; c < NCH; c++) {
+    Chan &h = p.ch[c];
+    Serial.printf("ช่อง %d %s: เกน %+.1f dB · ดีเลย์ %.2f ms · เฟส %s%s%s · ลิมิต %s %.1f dBFS A%.1f R%.0f ms\n", c, CN[c],
+                  h.gain, h.dly, h.inv ? "กลับ" : "ปกติ", h.mute ? " · MUTE" : "", h.solo ? " · SOLO" : "",
+                  h.limOn ? "ON" : "OFF", h.limT, h.limA, h.limR);
+    Serial.printf("  อีคิว (%s):", h.eqOn ? "ON" : "OFF");
+    for (int b = 0; b < NB; b++) if (h.eq[b].on && fabsf(h.eq[b].g) > 0.01f) Serial.printf(" [%d %s %.0fHz %+.1fdB Q%.2f]", b + 1, BT[h.eq[b].t], h.eq[b].f, h.eq[b].g, h.eq[b].q);
+    Serial.println();
+  }
+}
+
+void serialPoll() {
+  static String buf;
+  while (Serial.available()) {
+    char ch = Serial.read();
+    if (ch != '\n' && ch != '\r') { if (buf.length() < 600) buf += ch; continue; }
+    buf.trim();
+    if (!buf.length()) continue;
+    Serial.print("> "); Serial.println(buf);
+    if (buf == "help" || buf == "?") serHelp();
+    else if (buf == "status") serStatus();
+    else if (buf == "show") serShow();
+    else if (buf == "meter") { serMeter = !serMeter; Serial.println(serMeter ? "มิเตอร์: เปิด (พิมพ์ meter อีกครั้งเพื่อปิด)" : "มิเตอร์: ปิด"); }
+    else {
+      serReply = true;
+      bool isSet = buf.indexOf('=') > 0 && !buf.startsWith("preset") && !buf.startsWith("lock") && !buf.startsWith("unlock");
+      handleLine(buf);
+      if (isSet) Serial.println(locked ? "ไม่ได้ตั้งค่า: เครื่องถูกล็อก" : "OK");
+      serReply = false;
+    }
+    buf = "";
+  }
+}
+
 void loop() {
   char *s;
   while (xQueueReceive(lineQ, &s, 0) == pdTRUE) { handleLine(String(s)); free(s); }
+  serialPoll();
 
   static uint32_t lastM = 0;
   if (millis() - lastM >= 150) {
@@ -688,6 +775,13 @@ void loop() {
                todb(in), todb(pk[0]), todb(pk[1]), todb(pk[2]),
                -todb(1 - gr[0]), -todb(1 - gr[1]), -todb(1 - gr[2]), (float)cpuLoad);
       bleSend(m);
+    }
+    static uint8_t n = 0;
+    if (serMeter && ++n >= 3) {   // ~0.5 วินาที
+      n = 0;
+      Serial.printf("IN %6.1f | SUB %6.1f | %s %6.1f | %s %6.1f dBFS | LIM %4.1f %4.1f %4.1f dB | CPU %3.0f%% | A2DP %s\n",
+                    todb(in), todb(pk[0]), P.mode ? "L  " : "MID", todb(pk[1]), P.mode ? "R " : "HI", todb(pk[2]),
+                    -todb(1 - gr[0]), -todb(1 - gr[1]), -todb(1 - gr[2]), (float)cpuLoad, a2dp.is_connected() ? "on" : "off");
     }
   }
   delay(5);
