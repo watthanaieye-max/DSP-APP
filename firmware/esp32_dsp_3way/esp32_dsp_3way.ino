@@ -255,6 +255,7 @@ Params D;                              // สำเนาที่ DSP ใช้
 float inGain = 1, inGainT = 1, fade = 1, fadeT = 1;
 float inPeak = 0;
 volatile float cpuLoad = 0;
+volatile float toneHz = 0;            // >0 = ส่งเสียงทดสอบเข้า DAC ทุกช่อง ข้าม DSP (คำสั่ง tone)
 bool pendingMode = false;
 
 static inline float db2lin(float d) { return powf(10, d / 20); }
@@ -459,6 +460,19 @@ void dspTask(void *) {
       if (stereo) { o1[2 * i] = toI2S(y[1][i] + y[0][i]); o1[2 * i + 1] = toI2S(y[2][i] + y[0][i]); }
       else        { o1[2 * i] = toI2S(y[1][i] + y[0][i]); o1[2 * i + 1] = toI2S(y[2][i]); }
 #endif
+    }
+    // เสียงทดสอบ: sine −12 dBFS ออกทุกช่องของทุก DAC (ใช้แยกว่าปัญหาอยู่ที่ DAC/สาย หรือที่ DSP)
+    if (toneHz > 0) {
+      static float ph = 0;
+      const float inc = 2 * PI * toneHz / FS;
+      for (int i = 0; i < BLOCK; i++) {
+        int32_t v = toI2S(0.25f * sinf(ph));
+        ph += inc; if (ph > 2 * PI) ph -= 2 * PI;
+        o1[2 * i] = v; o1[2 * i + 1] = v;
+#if USE_DAC2
+        o2[2 * i] = v; o2[2 * i + 1] = v;
+#endif
+      }
     }
     uint32_t us = micros() - t0;
     cpuLoad += (us / blockUs * 100 - cpuLoad) * 0.02f;
@@ -719,6 +733,7 @@ void serHelp() {
   Serial.println(F("status          สถานะ: A2DP, BLE, CPU, บัฟเฟอร์, หน่วยความจำ"));
   Serial.println(F("show            ค่าที่ตั้งไว้ทั้งหมดแบบอ่านง่าย"));
   Serial.println(F("meter           เปิด/ปิด มิเตอร์ต่อเนื่อง (ทุก 0.5 วินาที)"));
+  Serial.println(F("tone / tone=440 เสียงทดสอบเข้า DAC ตรง (ไม่ผ่าน DSP) · tone=0 หยุด"));
   Serial.println(F("get             ค่าทั้งหมดแบบ JSON (เหมือนที่ส่งให้แอป)"));
   Serial.println(F("k=v&k=v         ตั้งค่า เช่น vol=-20  หรือ  x1=90&x2=3000  หรือ  c0gn=-3"));
   Serial.println(F("save / reset    บันทึกลงเครื่อง / กลับค่าเริ่มต้น"));
@@ -780,6 +795,13 @@ void serialPoll() {
     if (buf == "help" || buf == "?") serHelp();
     else if (buf == "status") serStatus();
     else if (buf == "show") serShow();
+    else if (buf.startsWith("tone")) {
+      int eq = buf.indexOf('=');
+      float hz = eq > 0 ? buf.substring(eq + 1).toFloat() : (toneHz > 0 ? 0 : 1000);
+      toneHz = constrain(hz, 0, 20000);
+      if (toneHz > 0) Serial.printf("เสียงทดสอบ %.0f Hz ระดับ -12 dBFS ออกทุกช่อง DAC (พิมพ์ tone=0 เพื่อหยุด)\n", (float)toneHz);
+      else Serial.println("หยุดเสียงทดสอบ");
+    }
     else if (buf == "meter") { serMeter = !serMeter; Serial.println(serMeter ? "มิเตอร์: เปิด (พิมพ์ meter อีกครั้งเพื่อปิด)" : "มิเตอร์: ปิด"); }
     else {
       serReply = true;
