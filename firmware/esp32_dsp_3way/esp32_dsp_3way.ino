@@ -160,6 +160,7 @@ void buildKeys() {
 }
 
 // ===================== DSP: biquad =====================
+enum { T_PEAK = 0, T_LS = 1, T_HS = 2, T_LP = 3, T_HP = 4 };
 // DF2T float, ค่าสัมประสิทธิ์ค่อยๆ เลื่อนเข้าหาเป้าหมายทุกบล็อก (กันเสียงป๊อก)
 struct BQ {
   float b0 = 1, b1 = 0, b2 = 0, a1 = 0, a2 = 0;      // ใช้งานจริง
@@ -183,26 +184,26 @@ struct BQ {
     return y;
   }
   void runBlock(float *x, int n) { if (idle) return; for (int i = 0; i < n; i++) x[i] = run(x[i]); }
+  // ออกแบบ biquad (RBJ cookbook) แล้วตั้งเป็นค่าเป้าหมาย
+  void design(int t, float f, float g, float Q) {
+    f = fminf(f, FS * 0.45f);
+    float A = powf(10, g / 40), w = 2 * PI * f / FS, cw = cosf(w), sw = sinf(w), al = sw / (2 * Q);
+    float b0, b1, b2, a0, a1, a2;
+    switch (t) {
+      case T_PEAK: b0 = 1 + al * A; b1 = -2 * cw; b2 = 1 - al * A; a0 = 1 + al / A; a1 = -2 * cw; a2 = 1 - al / A; break;
+      case T_LS: { float s = 2 * sqrtf(A) * al;
+        b0 = A * ((A + 1) - (A - 1) * cw + s); b1 = 2 * A * ((A - 1) - (A + 1) * cw); b2 = A * ((A + 1) - (A - 1) * cw - s);
+        a0 = (A + 1) + (A - 1) * cw + s; a1 = -2 * ((A - 1) + (A + 1) * cw); a2 = (A + 1) + (A - 1) * cw - s; } break;
+      case T_HS: { float s = 2 * sqrtf(A) * al;
+        b0 = A * ((A + 1) + (A - 1) * cw + s); b1 = -2 * A * ((A - 1) + (A + 1) * cw); b2 = A * ((A + 1) + (A - 1) * cw - s);
+        a0 = (A + 1) - (A - 1) * cw + s; a1 = 2 * ((A - 1) - (A + 1) * cw); a2 = (A + 1) - (A - 1) * cw - s; } break;
+      case T_LP: b0 = (1 - cw) / 2; b1 = 1 - cw; b2 = (1 - cw) / 2; a0 = 1 + al; a1 = -2 * cw; a2 = 1 - al; break;
+      default:   b0 = (1 + cw) / 2; b1 = -(1 + cw); b2 = (1 + cw) / 2; a0 = 1 + al; a1 = -2 * cw; a2 = 1 - al; break;
+    }
+    set(b0 / a0, b1 / a0, b2 / a0, a1 / a0, a2 / a0);
+  }
 };
 
-enum { T_PEAK = 0, T_LS = 1, T_HS = 2, T_LP = 3, T_HP = 4 };
-void design(BQ &q, int t, float f, float g, float Q) {
-  f = fminf(f, FS * 0.45f);
-  float A = powf(10, g / 40), w = 2 * PI * f / FS, cw = cosf(w), sw = sinf(w), al = sw / (2 * Q);
-  float b0, b1, b2, a0, a1, a2;
-  switch (t) {
-    case T_PEAK: b0 = 1 + al * A; b1 = -2 * cw; b2 = 1 - al * A; a0 = 1 + al / A; a1 = -2 * cw; a2 = 1 - al / A; break;
-    case T_LS: { float s = 2 * sqrtf(A) * al;
-      b0 = A * ((A + 1) - (A - 1) * cw + s); b1 = 2 * A * ((A - 1) - (A + 1) * cw); b2 = A * ((A + 1) - (A - 1) * cw - s);
-      a0 = (A + 1) + (A - 1) * cw + s; a1 = -2 * ((A - 1) + (A + 1) * cw); a2 = (A + 1) + (A - 1) * cw - s; } break;
-    case T_HS: { float s = 2 * sqrtf(A) * al;
-      b0 = A * ((A + 1) + (A - 1) * cw + s); b1 = -2 * A * ((A - 1) + (A + 1) * cw); b2 = A * ((A + 1) + (A - 1) * cw - s);
-      a0 = (A + 1) - (A - 1) * cw + s; a1 = 2 * ((A - 1) - (A + 1) * cw); a2 = (A + 1) - (A - 1) * cw - s; } break;
-    case T_LP: b0 = (1 - cw) / 2; b1 = 1 - cw; b2 = (1 - cw) / 2; a0 = 1 + al; a1 = -2 * cw; a2 = 1 - al; break;
-    default:   b0 = (1 + cw) / 2; b1 = -(1 + cw); b2 = (1 + cw) / 2; a0 = 1 + al; a1 = -2 * cw; a2 = 1 - al; break;
-  }
-  q.set(b0 / a0, b1 / a0, b2 / a0, a1 / a0, a2 / a0);
-}
 
 // ค่า Q ของแต่ละชั้น: [ชนิด 0=BW 1=LR][ความชัน 0=12 1=24 2=48]
 const float XQ[2][3][4] = {
@@ -214,7 +215,7 @@ struct XF {               // ตัวกรองครอสโอเวอร
   BQ s[4];
   void design(int lpHp, float f, int type, int slope) {
     for (int i = 0; i < 4; i++) {
-      if (i < XN[slope]) ::design(s[i], lpHp, f, 0, XQ[type][slope][i]); else s[i].bypass();
+      if (i < XN[slope]) s[i].design(lpHp, f, 0, XQ[type][slope][i]); else s[i].bypass();
     }
   }
   void off() { for (auto &q : s) q.bypass(); }
@@ -228,7 +229,7 @@ struct EQ6 {
   BQ b[NB];
   void design(const Band *bd, bool on) {
     for (int i = 0; i < NB; i++) {
-      if (on && bd[i].on && (fabsf(bd[i].g) > 0.01f)) ::design(b[i], bd[i].t, bd[i].f, bd[i].g, bd[i].q); else b[i].bypass();
+      if (on && bd[i].on && (fabsf(bd[i].g) > 0.01f)) b[i].design(bd[i].t, bd[i].f, bd[i].g, bd[i].q); else b[i].bypass();
     }
   }
   void glide(float k) { for (auto &q : b) q.glide(k); }
