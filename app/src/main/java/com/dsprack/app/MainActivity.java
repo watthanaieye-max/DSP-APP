@@ -30,6 +30,7 @@ import android.os.ParcelUuid;
 import android.provider.Settings;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
+import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -54,7 +55,7 @@ public class MainActivity extends Activity {
     static final UUID RX = UUID.fromString("6e400002-b5a3-f393-e0a9-e50e24dcca9e");
     static final UUID TX = UUID.fromString("6e400003-b5a3-f393-e0a9-e50e24dcca9e");
     static final UUID CCCD = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
-    static final int REQ_PERM = 1, REQ_BT_ON = 2;
+    static final int REQ_PERM = 1, REQ_BT_ON = 2, REQ_MIC = 3;
 
     WebView web;
     final Handler ui = new Handler(Looper.getMainLooper());
@@ -66,6 +67,7 @@ public class MainActivity extends Activity {
     final StringBuilder lineBuf = new StringBuilder();
     boolean writing = false, scanning = false, ready = false, wantConnect = false, userDisconnect = false;
     SharedPreferences prefs;
+    PermissionRequest pendingMic;   // คำขอใช้ไมค์จากหน้าเว็บ (RTA) ที่รอผู้ใช้กดอนุญาต
 
     @Override
     protected void onCreate(Bundle b) {
@@ -80,8 +82,32 @@ public class MainActivity extends Activity {
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
+        s.setMediaPlaybackRequiresUserGesture(false);
         web.addJavascriptInterface(new Bridge(), "AndroidBle");
-        web.setWebChromeClient(new WebChromeClient());
+        web.setWebChromeClient(new WebChromeClient() {
+            // หน้าเว็บขอใช้ไมค์ (getUserMedia) สำหรับ RTA
+            @Override
+            public void onPermissionRequest(PermissionRequest req) {
+                ui.post(() -> {
+                    boolean wantsMic = false;
+                    for (String r : req.getResources())
+                        if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(r)) wantsMic = true;
+                    if (!wantsMic) { req.deny(); return; }
+                    if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                        req.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
+                    } else {
+                        if (pendingMic != null) pendingMic.deny();
+                        pendingMic = req;
+                        requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_MIC);
+                    }
+                });
+            }
+
+            @Override
+            public void onPermissionRequestCanceled(PermissionRequest req) {
+                ui.post(() -> { if (pendingMic == req) pendingMic = null; });
+            }
+        });
         web.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageFinished(WebView v, String url) {
@@ -164,6 +190,15 @@ public class MainActivity extends Activity {
 
     @Override
     public void onRequestPermissionsResult(int code, String[] perms, int[] res) {
+        if (code == REQ_MIC) {
+            if (pendingMic == null) return;
+            if (res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED)
+                pendingMic.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
+            else
+                pendingMic.deny();
+            pendingMic = null;
+            return;
+        }
         if (code != REQ_PERM) return;
         if (hasPerms()) { if (wantConnect) startConnect(); }
         else status("ต้องอนุญาตบลูทูธ/อุปกรณ์ใกล้เคียง ก่อนจึงจะเชื่อมต่อได้", true);
