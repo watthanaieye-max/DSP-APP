@@ -4,16 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14181e">
-<title>DSP Rack 2.1</title>
+<title>DSP Rack v2</title>
 <style>
-:root{--bg:#14181e;--panel:#1c2129;--panel-2:#252c37;--line:#323a47;--text:#e7eaf0;--muted:#8f98a7;--accent:#f2a33a;--signal:#5ec6dc;--sub:#b48cf2;--good:#6fcf8a;--warn:#f2c94c;--hot:#ef6a5b;
+:root{--bg:#14181e;--panel:#1c2129;--panel-2:#252c37;--line:#323a47;--text:#e7eaf0;--muted:#8f98a7;--accent:#f2a33a;--signal:#5ec6dc;--good:#6fcf8a;--warn:#f2c94c;--hot:#ef6a5b;
+--csub:#ef6a5b;--cmid:#6fcf8a;--chi:#5ec6dc;
 --display:"Barlow Condensed","Arial Narrow","Roboto Condensed",sans-serif;--body:"IBM Plex Sans Thai","Noto Sans Thai",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;color-scheme:dark}
 *{box-sizing:border-box}html,body{margin:0}
 body{background:var(--bg);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.5;-webkit-tap-highlight-color:transparent}
-button,select{font:inherit;color:inherit}
+button,select,input{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--signal);outline-offset:2px}
 .top{position:sticky;top:0;z-index:10;background:rgba(20,24,30,.97);border-bottom:1px solid var(--line);backdrop-filter:blur(6px)}
-.topin{max-width:760px;margin:0 auto;padding:10px 14px 0}
+.topin{max-width:760px;margin:0 auto;padding:10px 14px 9px}
 .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
 h1{font-family:var(--display);font-weight:600;font-size:26px;letter-spacing:.05em;margin:0;line-height:1;text-transform:uppercase}
 h1 span{color:var(--accent)}
@@ -21,19 +22,14 @@ h1 span{color:var(--accent)}
 .conn i{flex:none;width:9px;height:9px;border-radius:50%;background:var(--hot)}
 .conn.ok i{background:var(--good);box-shadow:0 0 6px var(--good)}
 .conn span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tright{display:flex;align-items:center;gap:8px;flex:none}
 .cbtn{flex:none;border:0;border-radius:8px;background:var(--accent);color:#1a1307;font-weight:600;padding:7px 12px;font-size:14px;cursor:pointer}
 .cbtn.off{background:var(--panel-2);color:var(--text);border:1px solid var(--line);font-weight:400}
-.mini{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px;margin:9px 0 8px}
-.m{display:grid;grid-template-columns:32px 1fr 42px;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--muted)}
-.mbar{position:relative;height:8px;background:var(--panel-2);border-radius:3px;overflow:hidden}
-.mfill{position:absolute;inset:0 auto 0 0;width:0;background:linear-gradient(90deg,var(--good) 0 70%,var(--warn) 70% 90%,var(--hot) 90%);background-size:var(--full,200px) 100%;transition:width .08s linear}
-.mpeak{position:absolute;top:0;bottom:0;width:2px;background:var(--text);left:0}
-.m output{text-align:right;font-variant-numeric:tabular-nums}
-.m output.clip{color:var(--hot)}
-.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
-.tab{background:none;border:0;border-bottom:2px solid transparent;padding:9px 2px 8px;font-size:14px;color:var(--muted);cursor:pointer}
-.tab[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
-main{max-width:760px;margin:0 auto;padding:14px 12px 96px}
+.lockbtn{flex:none;width:36px;height:34px;border-radius:8px;border:1px solid var(--line);background:var(--panel-2);display:grid;place-items:center;cursor:pointer;color:var(--muted)}
+.lockbtn svg{width:18px;height:18px}
+body.locked .lockbtn{color:var(--warn);border-color:var(--warn)}
+.pname{font-size:13px;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:45%}
+main{max-width:760px;margin:0 auto;padding:14px 12px calc(86px + env(safe-area-inset-bottom))}
 .pane{display:grid;gap:14px}
 .pane[hidden]{display:none}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;min-width:0}
@@ -52,16 +48,18 @@ input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:line
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--text);border:3px solid var(--panel);margin-top:-8px;box-shadow:0 0 0 1px var(--accent)}
 input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--text);border:3px solid var(--panel);box-shadow:0 0 0 1px var(--accent)}
 input[type=range]:disabled{cursor:not-allowed}
-.big input[type=range]{height:36px}
-.big .ctl-row{font-size:16px}.big .ctl-row output{font-size:16px}
 select{background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:7px 8px;font-size:14px;max-width:100%}
+input[type=text],input[type=password]{background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:7px 9px;font-size:14px;min-width:0}
 .toggle{display:inline-flex;align-items:center;gap:7px;background:var(--panel-2);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 10px;cursor:pointer;font-family:var(--mono);font-size:12px;letter-spacing:.04em;color:var(--muted);white-space:nowrap}
 .toggle::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--line)}
 .toggle[aria-pressed="true"]{color:var(--text);border-color:var(--good)}
 .toggle[aria-pressed="true"]::before{background:var(--good);box-shadow:0 0 6px var(--good)}
 .toggle.danger[aria-pressed="true"]{border-color:var(--hot);color:var(--hot)}
 .toggle.danger[aria-pressed="true"]::before{background:var(--hot);box-shadow:0 0 6px var(--hot)}
+.toggle.solo[aria-pressed="true"]{border-color:var(--warn);color:var(--warn)}
+.toggle.solo[aria-pressed="true"]::before{background:var(--warn);box-shadow:0 0 6px var(--warn)}
 .line{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:14px;padding:4px 0}
+.tgls{display:flex;flex-wrap:wrap;gap:8px}
 .graph{position:relative;height:clamp(210px,52vw,320px);background:#10141a;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .graph canvas{width:100%;height:100%;display:block;touch-action:none}
 .legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted);margin-top:8px}
@@ -73,20 +71,55 @@ select{background:var(--panel-2);border:1px solid var(--line);border-radius:7px;
 .chip[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);background:rgba(242,163,58,.1)}
 .chip[aria-pressed="true"] small{color:var(--accent)}
 .chip.dis{opacity:.45;text-decoration:line-through}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.seg button{background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:9px 4px;cursor:pointer;font-size:15px;font-weight:600}
+.seg button[aria-pressed="true"]{border-color:var(--c,var(--accent));color:var(--c,var(--accent));background:rgba(255,255,255,.04)}
 .band{display:grid;gap:12px;background:var(--panel-2);border-radius:10px;padding:12px}
 .band .bh{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .band .bh b{font-family:var(--display);font-size:18px;letter-spacing:.04em}
-.gr{display:grid;grid-template-columns:auto 1fr 64px;gap:8px;align-items:center;font-size:13px;margin-top:12px}
-.gr .grfill{position:absolute;top:0;bottom:0;right:0;width:0;background:var(--accent);transition:width .08s linear}
-.gr output{font-family:var(--mono);font-size:12px;text-align:right;color:var(--accent)}
+.band label.sel{display:grid;gap:4px;font-size:14px}
+.xf{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;font-size:14px;padding:6px 0;border-top:1px solid var(--line)}
+.xf:first-child{border-top:0}
+.xf b{font-weight:500}.xf b i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:middle}
 .abtn{width:100%;padding:11px;border-radius:9px;border:1px solid var(--line);background:var(--panel-2);cursor:pointer;font-size:14px}
-.abtn[aria-pressed="true"]{border-color:var(--hot);color:var(--hot)}
 .btn{padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel-2);cursor:pointer;font-size:13px}
-.bar{position:fixed;left:0;right:0;bottom:0;z-index:10;background:rgba(20,24,30,.97);border-top:1px solid var(--line);padding:10px 14px calc(10px + env(safe-area-inset-bottom));display:flex;gap:10px;justify-content:center;align-items:center}
-.save{padding:11px 24px;border-radius:10px;border:0;background:var(--accent);color:#1a1307;font-weight:600;font-size:16px;cursor:pointer}
-#msg{font-size:13px;color:var(--muted);min-width:80px}
-.hidden{display:none !important}
-body:not(.linked) main .pane:not([data-pane="rta"]) .card,body:not(.linked) .bar .save{opacity:.45;pointer-events:none}
+.btn.pri{background:var(--accent);color:#1a1307;border-color:var(--accent);font-weight:600}
+.gr{display:grid;grid-template-columns:auto 1fr 64px;gap:8px;align-items:center;font-size:13px;margin-top:12px}
+.mbar{position:relative;height:8px;background:var(--panel-2);border-radius:3px;overflow:hidden}
+.gr .grfill{position:absolute;top:0;bottom:0;right:0;width:0;background:var(--hot);transition:width .08s linear}
+.gr output{font-family:var(--mono);font-size:12px;text-align:right;color:var(--hot)}
+/* มิเตอร์แนวตั้ง */
+.meters{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.vm{display:grid;justify-items:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.vbar{position:relative;width:26px;height:150px;background:var(--panel-2);border-radius:4px;overflow:hidden}
+.vfill{position:absolute;left:0;right:0;bottom:0;height:0;background:linear-gradient(0deg,var(--good) 0 70%,var(--warn) 70% 90%,var(--hot) 90%);background-size:100% 150px;background-position:bottom;transition:height .08s linear}
+.vpeak{position:absolute;left:0;right:0;height:2px;background:var(--text);bottom:0}
+.vm output{font-variant-numeric:tabular-nums;color:var(--text)}
+.vm output.clip{color:var(--hot)}
+.vm b{font-family:var(--body);font-weight:500;font-size:13px;color:var(--text)}
+.lim{font-size:10px;letter-spacing:.06em;padding:1px 6px;border-radius:4px;border:1px solid var(--line);color:var(--line)}
+.lim.on{color:#1a0905;background:var(--hot);border-color:var(--hot);box-shadow:0 0 8px var(--hot)}
+.lim.na{visibility:hidden}
+/* ปุ่มหมุนวอลุ่ม */
+.knobwrap{display:grid;justify-items:center;gap:6px}
+.knob{width:min(64vw,230px);aspect-ratio:1;touch-action:none;cursor:grab;user-select:none}
+.knob text{font-family:var(--mono)}
+.kbtns{display:flex;gap:10px}
+.kbtns button{width:52px;height:38px;border-radius:9px;border:1px solid var(--line);background:var(--panel-2);font-size:20px;cursor:pointer}
+.mutes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mutes button{padding:12px 4px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);cursor:pointer;font-size:14px}
+.mutes button i{display:block;font-style:normal;font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:2px}
+.mutes button[aria-pressed="true"]{border-color:var(--hot);color:var(--hot);background:rgba(239,106,91,.08)}
+.mutes button[aria-pressed="true"] i{color:var(--hot)}
+.preset{display:grid;grid-template-columns:28px 1fr auto auto;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+.preset:first-child{border-top:0}
+.preset b{font-family:var(--mono);color:var(--muted)}
+.preset span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.preset span.empty{color:var(--muted)}
+.preset.act b,.preset.act span{color:var(--accent)}
+.codebox{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.codebox input{width:110px;font-family:var(--mono);letter-spacing:.3em;text-align:center}
+/* RTA */
 .rtabtns{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
 .rtabtns .abtn{padding:11px 4px}
 .abtn.go[aria-pressed="true"]{border-color:var(--good);color:var(--good)}
@@ -95,133 +128,105 @@ body:not(.linked) main .pane:not([data-pane="rta"]) .card,body:not(.linked) .bar
 .rtaread{display:flex;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:8px;font-variant-numeric:tabular-nums}
 .rtaread b{color:var(--text);font-weight:500}
 .rtaread span:last-child{white-space:nowrap}
+/* แท็บด้านล่าง */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:10;background:rgba(20,24,30,.98);border-top:1px solid var(--line);padding:0 0 env(safe-area-inset-bottom)}
+.tabsin{max-width:760px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
+.tab{background:none;border:0;border-top:2px solid transparent;padding:8px 2px 9px;font-size:12.5px;color:var(--muted);cursor:pointer;display:grid;justify-items:center;gap:3px}
+.tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tab[aria-selected="true"]{color:var(--accent);border-top-color:var(--accent);font-weight:600}
+#msg{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(74px + env(safe-area-inset-bottom));z-index:11;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:7px 12px;font-size:13px;max-width:min(92vw,520px);text-align:center;pointer-events:none;transition:opacity .2s}
+#msg:empty{opacity:0}
+.hidden{display:none !important}
+.ctlcard{transition:opacity .2s}
+body:not(.linked) .ctlcard,body.locked .ctlcard{opacity:.45;pointer-events:none}
+body.locked .lockcard{opacity:1;pointer-events:auto}
 </style>
 </head>
 <body>
 <div class="top"><div class="topin">
   <div class="row">
-    <h1>DSP <span>Rack 2.1</span></h1>
-    <button class="cbtn" id="connBtn">เชื่อมต่อ</button>
+    <h1>DSP <span>Rack v2</span></h1>
+    <div class="tright">
+      <button class="lockbtn" id="lockBtn" aria-label="ล็อกค่า"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path id="shackle" d="M8 11V7a4 4 0 0 1 8 0"/></svg></button>
+      <button class="cbtn" id="connBtn">เชื่อมต่อ</button>
+    </div>
   </div>
   <div class="row" style="margin-top:6px">
     <div class="conn" id="conn"><i></i><span id="connT">ยังไม่ได้เชื่อมต่อ</span></div>
+    <span class="pname" id="pname"></span>
     <span class="conn" id="cpu">CPU –</span>
   </div>
-  <div class="mini">
-    <div class="m"><span>IN</span><div class="mbar"><div class="mfill" id="m_in"></div><div class="mpeak" id="p_in"></div></div><output id="o_in">−∞</output></div>
-    <div class="m"><span>SUB</span><div class="mbar"><div class="mfill" id="m_os"></div><div class="mpeak" id="p_os"></div></div><output id="o_os">−∞</output></div>
-    <div class="m"><span>L</span><div class="mbar"><div class="mfill" id="m_ol"></div><div class="mpeak" id="p_ol"></div></div><output id="o_ol">−∞</output></div>
-    <div class="m"><span>R</span><div class="mbar"><div class="mfill" id="m_or"></div><div class="mpeak" id="p_or"></div></div><output id="o_or">−∞</output></div>
-  </div>
-  <p class="note warn hidden" id="noBle" style="margin:0 0 8px">เบราว์เซอร์นี้ใช้บลูทูธไม่ได้ · Android ใช้ Chrome · iPhone ใช้แอป Bluefy</p>
-  <nav class="tabs" role="tablist">
-    <button class="tab" role="tab" data-tab="main" aria-selected="true">หลัก</button>
-    <button class="tab" role="tab" data-tab="lr" aria-selected="false">ซ้าย-ขวา</button>
-    <button class="tab" role="tab" data-tab="sub" aria-selected="false">ซับเบส</button>
-    <button class="tab" role="tab" data-tab="fx" aria-selected="false">เอฟเฟกต์</button>
-    <button class="tab" role="tab" data-tab="rta" aria-selected="false">RTA</button>
-  </nav>
+  <p class="note warn hidden" id="noBle" style="margin:6px 0 0">เบราว์เซอร์นี้ใช้บลูทูธไม่ได้ · ใช้แอป DSP Rack บน Android</p>
 </div></div>
 
 <main>
-  <!-- ================= หลัก ================= -->
+  <!-- ================= หน้าหลัก ================= -->
   <section class="pane" data-pane="main">
     <div class="card">
-      <div class="head"><h2>ระดับเสียง</h2><button class="toggle danger" data-mod="mute" data-on="MUTE" data-off="เสียงเปิด" aria-pressed="false">เสียงเปิด</button></div>
-      <div class="ctls big" id="c-master"></div>
-      <div class="ctls" id="c-in" style="margin-top:12px"></div>
-      <p class="note">ปรับ Input gain ให้ IN สูงสุดอยู่ราว −12 ถึง −6 dBFS</p>
+      <div class="head"><h2>มิเตอร์</h2><span class="conn" id="modeT"></span></div>
+      <div class="meters" id="meters"></div>
     </div>
-    <div class="card">
-      <div class="head"><h2>Limiter <small>กันลำโพงพัง</small></h2><button class="toggle" data-mod="lim" aria-pressed="true">ON</button></div>
-      <div class="ctls" id="c-lim"></div>
-      <p class="note">เพดานเสียงขาออกทุกช่อง ตั้งให้ต่ำกว่าจุดที่แอมป์เริ่มแตก</p>
+    <div class="card ctlcard">
+      <div class="head"><h2>วอลุ่ม</h2></div>
+      <div class="knobwrap">
+        <svg class="knob" id="knob" viewBox="0 0 200 200" role="slider" aria-label="วอลุ่มหลัก" tabindex="0"></svg>
+        <div class="kbtns"><button id="volDn" aria-label="ลดวอลุ่ม">−</button><button id="volUp" aria-label="เพิ่มวอลุ่ม">+</button></div>
+      </div>
+      <div class="ctls" id="c-bal" style="margin-top:12px"></div>
     </div>
-    <div class="card">
-      <div class="head"><h2>พรีเซ็ต</h2><select id="preset" aria-label="พรีเซ็ต"><option value="">— เลือก —</option></select></div>
-      <p class="note" style="margin-top:0">พรีเซ็ตเปลี่ยน EQ ซ้าย-ขวาและเอฟเฟกต์ ไม่แตะค่าซับ ครอสโอเวอร์ และระดับเสียง</p>
-      <div style="margin-top:12px"><button class="abtn" id="abBtn" aria-pressed="false">A/B: บายพาสเอฟเฟกต์</button></div>
+    <div class="card ctlcard">
+      <div class="head"><h2>ปิดเสียง</h2></div>
+      <div class="mutes" id="mutes"></div>
     </div>
-    <div class="card">
-      <div class="head"><h2>รีเซ็ต</h2><button class="btn" id="resetBtn">กลับค่าเริ่มต้นทั้งหมด</button></div>
-      <p class="note" style="margin-top:0">ค่าที่บันทึกไว้ในเครื่องจะยังอยู่ จนกว่าจะกดบันทึกอีกครั้ง</p>
+    <div class="card ctlcard">
+      <div class="head"><h2>พรีเซ็ต</h2><button class="btn pri" id="saveBtn">บันทึกลงเครื่อง</button></div>
+      <select id="presetSel" aria-label="เลือกพรีเซ็ต" style="width:100%"></select>
+      <p class="note">บันทึกลงเครื่อง = จำค่าปัจจุบันไว้ใช้ตอนเปิด ESP32 · จัดการพรีเซ็ตได้ในแท็บตั้งค่า</p>
     </div>
   </section>
 
-  <!-- ================= ซ้าย-ขวา ================= -->
-  <section class="pane" data-pane="lr" hidden>
-    <div class="card">
-      <div class="head"><h2>บาลานซ์ซ้าย-ขวา</h2></div>
-      <div class="ctls" id="c-bal"></div>
+  <!-- ================= ครอส ================= -->
+  <section class="pane" data-pane="xo" hidden>
+    <div class="card ctlcard">
+      <div class="head"><h2>ครอสโอเวอร์ <small id="xoSub">20 Hz – 20 kHz</small></h2></div>
+      <div class="graph"><canvas id="gXo" aria-label="กราฟครอสโอเวอร์"></canvas></div>
+      <div class="legend" id="xoLegend"></div>
+      <div class="ctls" id="c-xo" style="margin-top:12px"></div>
+      <p class="note">ลากจุดบนกราฟซ้าย-ขวาเพื่อเลื่อนจุดตัด · เส้นประขาว = ผลรวมทางไฟฟ้า (รวมเฟสและดีเลย์)</p>
     </div>
-    <div class="card">
-      <div class="head"><h2>Parametric EQ <small>10 แบนด์ · 20 Hz – 20 kHz</small></h2>
-        <div style="display:flex;gap:8px;align-items:center"><button class="btn" id="flatM">Flat</button><button class="toggle" data-mod="eq" aria-pressed="true">ON</button></div></div>
-      <div class="graph"><canvas id="gMain" aria-label="กราฟ EQ ซ้าย-ขวา"></canvas></div>
-      <div class="legend"><span><i style="background:var(--accent)"></i>EQ + ฟิลเตอร์</span><span><i style="background:var(--signal)"></i>ลำโพงซ้าย/ขวา</span><span><i style="background:var(--sub)"></i>ซับ</span></div>
-      <div class="chips" id="chipsM"></div>
-      <div class="band">
-        <div class="bh"><b id="bandMT">แบนด์ 5</b><button class="toggle" id="beT" aria-pressed="true">ใช้แบนด์นี้</button></div>
-        <label style="display:grid;gap:4px;font-size:14px">ชนิดฟิลเตอร์
-          <select id="btype"><option value="1">Low shelf</option><option value="0">Peak (Bell)</option><option value="2">High shelf</option><option value="5">Notch</option></select></label>
-        <div class="ctls" id="c-bandM"></div>
-      </div>
+    <div class="card ctlcard">
+      <div class="head"><h2>ชนิดและความชัน</h2></div>
+      <div id="xfList"></div>
+      <p class="note" id="xfNote">Linkwitz-Riley 24/48 dB รวมกันเรียบที่จุดตัด · 12 dB ทั้งสองชนิด มักต้องกลับเฟสช่องใดช่องหนึ่ง</p>
+    </div>
+  </section>
+
+  <!-- ================= ช่องออก ================= -->
+  <section class="pane" data-pane="out" hidden>
+    <div class="card ctlcard">
+      <div class="seg" id="chSel"></div>
+    </div>
+    <div class="card ctlcard">
+      <div class="head"><h2>อีคิว <small id="oeqSub">6 แบนด์</small></h2>
+        <div class="tgls"><button class="btn" id="oFlat">Flat</button><button class="toggle" id="oEqOn" aria-pressed="true">ON</button></div></div>
+      <div class="graph"><canvas id="gOut" aria-label="กราฟอีคิวช่องออก"></canvas></div>
+      <div class="legend"><span><i style="background:var(--accent)"></i>อีคิว</span><span><i id="oLegC"></i>เสียงออกช่องนี้ (รวมครอส)</span></div>
+      <div id="oEq"></div>
       <p class="note">ลากจุดบนกราฟเพื่อปรับความถี่และเกน · แตะจุดสองครั้งเพื่อรีเซ็ตเกน</p>
     </div>
-    <div class="card">
-      <div class="head"><h2>ดีเลย์ลำโพง <small>จัดเฟสตามระยะตั้งตู้</small></h2></div>
-      <div class="ctls" id="c-align"></div>
-    </div>
-  </section>
-
-  <!-- ================= ซับเบส ================= -->
-  <section class="pane" data-pane="sub" hidden>
-    <div class="card">
-      <div class="head"><h2>ซับวูฟเฟอร์</h2><button class="toggle" data-mod="x21" data-on="เปิดซับ" data-off="ปิดซับ" aria-pressed="true">เปิดซับ</button></div>
-      <div class="line"><span>วอลลุ่มเบสอิสระ<br><small style="color:var(--muted)">ไม่ขึ้นกับระดับเสียงหลัก</small></span><button class="toggle" data-mod="subInd" data-on="ON" data-off="OFF" aria-pressed="false">OFF</button></div>
-      <div class="ctls big" id="c-subLvl" style="margin-top:8px"></div>
-      <div class="line" style="margin-top:8px"><span>เฟสซับ</span><button class="toggle" data-mod="subInv" data-on="กลับเฟส" data-off="ปกติ" aria-pressed="false">ปกติ</button></div>
-      <p class="note">ปิดซับ = ลำโพงซ้าย/ขวาเล่นเต็มย่าน · ส่วนซับทำงานตลอดแม้กด A/B</p>
-    </div>
-    <div class="card">
-      <div class="head"><h2>ครอสโอเวอร์ <small>Low-pass ซับ / High-pass ซ้าย-ขวา</small></h2></div>
-      <div class="ctls" id="c-xo"></div>
-      <label style="display:grid;gap:4px;font-size:14px;margin-top:12px">ความชัน
-        <select id="xSl"><option value="0">12 dB/oct · Butterworth</option><option value="1">24 dB/oct · Linkwitz-Riley</option><option value="2">48 dB/oct · Linkwitz-Riley</option></select></label>
-      <p class="note" id="slNote">12 dB/oct: ถ้าเบสบางลงตรงจุดตัด ลองกดกลับเฟสซับ</p>
-      <div class="ctls" id="c-xo2" style="margin-top:12px"></div>
-    </div>
-    <div class="card">
-      <div class="head"><h2>EQ เสียงเบส <small>6 แบนด์ · 20–500 Hz</small></h2>
-        <div style="display:flex;gap:8px;align-items:center"><button class="btn" id="flatS">Flat</button><button class="toggle" data-mod="seq" aria-pressed="true">ON</button></div></div>
-      <div class="graph"><canvas id="gSub" aria-label="กราฟ EQ ซับ"></canvas></div>
-      <div class="legend"><span><i style="background:var(--sub)"></i>เสียงซับรวม</span><span><i style="background:var(--accent)"></i>EQ ซับ</span></div>
-      <div class="chips" id="chipsS"></div>
-      <div class="band">
-        <div class="bh"><b id="bandST">แบนด์ 1</b><button class="toggle" id="seT" aria-pressed="true">ใช้แบนด์นี้</button></div>
-        <div class="ctls" id="c-bandS"></div>
+    <div class="card ctlcard">
+      <div class="head"><h2>ระดับและเวลา</h2></div>
+      <div class="ctls" id="c-och"></div>
+      <div class="tgls" style="margin-top:12px">
+        <button class="toggle" id="oInv" aria-pressed="false">กลับเฟส</button>
+        <button class="toggle danger" id="oMute" aria-pressed="false">ปิดเสียง</button>
+        <button class="toggle solo" id="oSolo" aria-pressed="false">ฟังเดี่ยว</button>
       </div>
     </div>
-  </section>
-
-  <!-- ================= เอฟเฟกต์ ================= -->
-  <section class="pane" data-pane="fx" hidden>
-    <div class="card">
-      <div class="head"><h2>Filter <small>HPF / LPF 12 dB/oct</small></h2><button class="toggle" data-mod="flt" aria-pressed="false">BYPASS</button></div>
-      <div class="ctls" id="c-flt"></div>
-    </div>
-    <div class="card">
-      <div class="head"><h2>Compressor</h2><button class="toggle" data-mod="comp" aria-pressed="false">BYPASS</button></div>
-      <div class="ctls" id="c-comp"></div>
+    <div class="card ctlcard">
+      <div class="head"><h2>ลิมิตเตอร์ <small>กันลำโพงพัง</small></h2><button class="toggle" id="oLim" aria-pressed="true">ON</button></div>
+      <div class="ctls" id="c-olim"></div>
       <div class="gr"><span>ลดเกน</span><div class="mbar" style="direction:rtl"><div class="grfill" id="grFill"></div></div><output id="grOut">0.0 dB</output></div>
-    </div>
-    <div class="card">
-      <div class="head"><h2>Delay</h2><button class="toggle" data-mod="dly" aria-pressed="false">BYPASS</button></div>
-      <div class="ctls" id="c-dly"></div>
-    </div>
-    <div class="card">
-      <div class="head"><h2>Reverb</h2><button class="toggle" data-mod="rev" aria-pressed="false">BYPASS</button></div>
-      <div class="ctls" id="c-rev"></div>
     </div>
   </section>
 
@@ -239,35 +244,88 @@ body:not(.linked) main .pane:not([data-pane="rta"]) .card,body:not(.linked) .bar
       </div>
       <div class="ctls" id="c-pink" style="margin-top:12px"></div>
       <p class="note" id="rtaMsg">ใช้ไมค์มือถือวัดเสียงจริง · ระดับเป็น dB เทียบ full scale ของไมค์ (ไม่ใช่ dB SPL)</p>
-      <p class="note">วิธีจูน: เล่น pink noise ผ่านระบบเสียง วางมือถือที่ตำแหน่งฟัง แล้วปรับ EQ ให้แท่งกราฟเรียบที่สุด · ไมค์มือถือไม่แม่นที่ย่านต่ำกว่า ~50 Hz และสูงกว่า ~12 kHz</p>
+      <p class="note">วิธีจูน: เล่น pink noise ผ่านระบบเสียง วางมือถือที่ตำแหน่งฟัง แล้วปรับอีคิวให้แท่งกราฟเรียบที่สุด · ไมค์มือถือไม่แม่นที่ย่านต่ำกว่า ~50 Hz และสูงกว่า ~12 kHz</p>
+    </div>
+  </section>
+
+  <!-- ================= ตั้งค่า ================= -->
+  <section class="pane" data-pane="set" hidden>
+    <div class="card ctlcard">
+      <div class="head"><h2>โหมดเสียง</h2></div>
+      <div class="seg" id="modeSel" style="grid-template-columns:1fr 1fr">
+        <button data-m="0">โมโน 3 ทาง</button><button data-m="1">สเตอริโอ 2.1</button>
+      </div>
+      <p class="note" id="modeNote"></p>
+    </div>
+    <div class="card ctlcard">
+      <div class="head"><h2>ขาเข้า</h2></div>
+      <div class="ctls" id="c-in"></div>
+    </div>
+    <div class="card ctlcard">
+      <div class="head"><h2>อีคิวขาเข้า <small>6 แบนด์ · ก่อนแยกช่อง</small></h2>
+        <div class="tgls"><button class="btn" id="iFlat">Flat</button><button class="toggle" id="iEqOn" aria-pressed="true">ON</button></div></div>
+      <div class="graph"><canvas id="gIn" aria-label="กราฟอีคิวขาเข้า"></canvas></div>
+      <div id="iEq"></div>
+    </div>
+    <div class="card ctlcard">
+      <div class="head"><h2>ตัดความถี่ต่ำ <small>Subsonic</small></h2><button class="toggle" id="ssOn" aria-pressed="true">ON</button></div>
+      <div class="ctls" id="c-ss"></div>
+      <label class="line">ความชัน <select id="ssSl"><option value="0">12 dB/oct</option><option value="1">24 dB/oct</option></select></label>
+      <p class="note">กันลำโพงซับขยับเกินช่วงจากความถี่ต่ำกว่าที่ตู้ทำได้</p>
+    </div>
+    <div class="card ctlcard">
+      <div class="head"><h2>พรีเซ็ต 5 ชุด</h2></div>
+      <div id="presetList"></div>
+      <p class="note">บันทึก = เก็บค่าปัจจุบันทั้งหมด (รวมโหมดเสียง) ลงช่องนั้น</p>
+    </div>
+    <div class="card lockcard">
+      <div class="head"><h2>ล็อกค่า</h2><span class="conn" id="lockState"></span></div>
+      <div class="codebox"><input type="password" id="codeIn" inputmode="numeric" maxlength="4" placeholder="····" aria-label="รหัส 4 หลัก"><button class="btn pri" id="lockGo">ล็อก</button></div>
+      <p class="note">ล็อกแล้วอ่านค่าได้แต่แก้ไม่ได้ จนกว่าจะใส่รหัสเดิมเพื่อปลดล็อก</p>
+    </div>
+    <div class="card ctlcard">
+      <div class="head"><h2>รีเซ็ต</h2><button class="btn" id="resetBtn">กลับค่าเริ่มต้น</button></div>
+      <p class="note" style="margin-top:0">ไม่ลบพรีเซ็ตและรหัสล็อก · ค่าที่บันทึกลงเครื่องยังอยู่จนกว่าจะกดบันทึกอีกครั้ง</p>
     </div>
   </section>
 </main>
 
-<div class="bar">
-  <button class="save" id="saveBtn">บันทึกลงเครื่อง</button>
-  <span id="msg"></span>
-</div>
+<div id="msg" role="status"></div>
+
+<nav class="tabs" role="tablist"><div class="tabsin">
+  <button class="tab" role="tab" data-tab="main" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M5 20V10M10 20V4M15 20v-7M20 20V8"/></svg>หน้าหลัก</button>
+  <button class="tab" role="tab" data-tab="xo" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M2 8c5 0 7 0 10 6s5 6 10 6"/><path d="M2 20c5 0 7 0 10-6s5-6 10-6"/></svg>ครอส</button>
+  <button class="tab" role="tab" data-tab="out" aria-selected="false"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><circle cx="12" cy="14" r="3.5"/><circle cx="12" cy="7.5" r="1.3"/></svg>ช่องออก</button>
+  <button class="tab" role="tab" data-tab="rta" aria-selected="false"><svg viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg>RTA</button>
+  <button class="tab" role="tab" data-tab="set" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>ตั้งค่า</button>
+</div></nav>
 
 <script>
 (function(){
 const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
-const FS=44100,NB=10,NS=6;
+const FS=44100,NB=6;
 const NATIVE=!!window.AndroidBle;   // อยู่ในแอป Android: ใช้บลูทูธของแอป
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 const fmtHz=f=>f>=1000?(f/1000).toFixed(f>=10000?1:2).replace(/\.?0+$/,'')+' kHz':Math.round(f)+' Hz';
 const fmtDb=v=>(v>0.05?'+':v<-0.05?'−':'')+Math.abs(v).toFixed(1)+' dB';
-const fmtMs=v=>(v<10?(+v).toFixed(2):Math.round(v))+' ms';
-const fmtPct=v=>Math.round(v)+'%';
-const PEAK=0,LS=1,HS=2,LP=3,HP=4,NOTCH=5;
+const fmtMs=v=>(+v).toFixed(2)+' ms';
+const r1=v=>Math.round(v*10)/10,ri=v=>Math.round(v),r2=v=>Math.round(v*100)/100;
+const CS=getComputedStyle(document.documentElement),COL={};
+['line','text','muted','accent','panel-2','signal','csub','cmid','chi','hot','good'].forEach(k=>COL[k]=CS.getPropertyValue('--'+k).trim());
+const MONO=CS.getPropertyValue('--mono');
+const CHC=[COL.csub,COL.cmid,COL.chi];
 
-/* ---------- ค่าทั้งหมด (โหลดจริงจาก ESP32) ---------- */
-const S={ing:0,gain:-12,mute:0,byp:0,bal:0,eq:1,flt:0,hp:30,lp:18000,comp:0,thr:-18,ratio:3,att:10,rel:200,knee:6,mk:0,
-dly:0,dt:250,dfb:35,dmix:25,dtone:4000,rev:0,rsz:2.2,rmix:20,x21:1,xF:100,xSl:1,subG:0,subInd:0,subD:0,subHp:25,subInv:0,lim:1,limT:-1,aL:0,aR:0,seq:1,
-bt:[1,0,0,0,0,0,0,0,0,2],bf:[32,64,125,250,500,1000,2000,4000,8000,16000],bg:Array(10).fill(0),bq:[.7,1.4,1.4,1.4,1.4,1.4,1.4,1.4,1.4,.7],be:Array(10).fill(1),
-sf:[25,40,63,100,160,250],sg:Array(6).fill(0),sq:Array(6).fill(1.4),se:Array(6).fill(1)};
-let selM=4,selS=0;
-const on=m=>!!S[m]&&!S.byp;
+/* ---------- ค่าทั้งหมด (คีย์ตรงกับเฟิร์มแวร์) ---------- */
+const S={mode:0,vol:-20,ing:0,bal:0,ieq:1,ss:1,sss:1,ssf:25,x1:80,x2:3000,pre:-1,lk:0,lkset:0,dac2:1};
+for(let i=0;i<4;i++){S['ft'+i]=1;S['fs'+i]=1;}
+function bandDef(p,fs,q){fs.forEach((f,b)=>{S[p+'t'+b]=0;S[p+'f'+b]=f;S[p+'g'+b]=0;S[p+'q'+b]=q;S[p+'e'+b]=1;});}
+bandDef('i',[60,150,400,1000,3000,8000],1);
+[[25,40,63,100,160,250],[150,300,600,1200,2500,5000],[2500,4000,6300,10000,14000,18000]].forEach((fs,c)=>{
+  const p='c'+c;bandDef(p,fs,1.4);Object.assign(S,{[p+'eq']:1,[p+'gn']:0,[p+'dl']:0,[p+'iv']:0,[p+'mu']:0,[p+'so']:0,[p+'lt']:-1,[p+'la']:5,[p+'lr']:200,[p+'lo']:1});});
+for(let i=0;i<5;i++)S['pn'+i]='';
+const stereo=()=>S.mode==1;
+const CHN=()=>stereo()?['ซับ','ซ้าย','ขวา']:['ซับ','กลาง','แหลม'];
+let selCh=1,selOB=0,selIB=0;
 
 /* ---------- Bluetooth (Nordic UART Service) ---------- */
 const NUS='6e400001-b5a3-f393-e0a9-e50e24dcca9e',RXU='6e400002-b5a3-f393-e0a9-e50e24dcca9e',TXU='6e400003-b5a3-f393-e0a9-e50e24dcca9e';
@@ -279,19 +337,28 @@ function writeLine(s){if(NATIVE){AndroidBle.write(s+'\n');return Promise.resolve
     wq=wq.then(()=>rxC?(rxC.writeValueWithResponse?rxC.writeValueWithResponse(part):rxC.writeValue(part)):null).catch(()=>msg('ส่งค่าไม่สำเร็จ',1));}
   return wq;}
 let pend={},timer=null;
-function send(obj){Object.assign(pend,obj);if(!timer)timer=setTimeout(flush,80);}
+function send(obj){if(S.lk)return;Object.assign(pend,obj);if(!timer)timer=setTimeout(flush,80);}
 function flush(){timer=null;const q=Object.entries(pend).map(([k,v])=>k+'='+(+(+v).toFixed(3))).join('&');pend={};if(!q||!rxC)return;writeLine(q);}
-function msg(t,bad){const m=$('#msg');m.textContent=t;m.style.color=bad?'var(--hot)':'var(--muted)';}
+function cmd(s){if(!rxC){msg('ยังไม่ได้เชื่อมต่อ',1);return;}flush();writeLine(s);}
+let msgT=0;
+function msg(t,bad,ms){const m=$('#msg');m.textContent=t||'';m.style.color=bad?'var(--hot)':'var(--text)';clearTimeout(msgT);if(t)msgT=setTimeout(()=>m.textContent='',ms||(bad?5000:2500));}
 function onLine(line){
-  if(line[0]==='M'){try{meters(JSON.parse(line.slice(1)))}catch(e){}}
-  else if(line[0]==='J'){try{const j=JSON.parse(line.slice(1));Object.keys(S).forEach(k=>{if(j[k]!==undefined)S[k]=j[k];});refreshUI();msg('โหลดค่าจากเครื่องแล้ว');setTimeout(()=>msg(''),2000);}catch(e){msg('อ่านค่าไม่สำเร็จ',1)}}
-  else if(line==='Ksave'){msg('บันทึกแล้ว');setTimeout(()=>msg(''),2500);}
+  const c=line[0];
+  if(c==='M'){try{meters(JSON.parse(line.slice(1)))}catch(e){}}
+  else if(c==='J'){try{const j=JSON.parse(line.slice(1));const oldMode=S.mode;
+      Object.keys(j).forEach(k=>{S[k]=/^pn\d$/.test(k)?decodeURIComponent(j[k]):j[k];});
+      if(S.mode!==oldMode)selCh=clamp(selCh,0,2);refreshUI();}catch(e){msg('อ่านค่าไม่สำเร็จ',1)}}
+  else if(line==='Ksave')msg('บันทึกลงเครื่องแล้ว');
+  else if(line==='Kpreset')msg('บันทึกพรีเซ็ตแล้ว');
+  else if(line==='Elocked'){msg('เครื่องถูกล็อกอยู่ แก้ค่าไม่ได้',1);writeLine('get');}
+  else if(line==='Ecode')msg('รหัสไม่ถูกต้อง',1);
+  else if(line==='Epreset')msg('พรีเซ็ตช่องนี้ยังว่าง',1);
 }
-function onNotify(e){inbuf+=dec.decode(e.target.value);let i;while((i=inbuf.indexOf('\n'))>=0){const l=inbuf.slice(0,i);inbuf=inbuf.slice(i+1);if(l)onLine(l);}if(inbuf.length>4000)inbuf='';}
+function onNotify(e){inbuf+=dec.decode(e.target.value,{stream:true});let i;while((i=inbuf.indexOf('\n'))>=0){const l=inbuf.slice(0,i);inbuf=inbuf.slice(i+1);if(l)onLine(l);}if(inbuf.length>8000)inbuf='';}
 function setConn(ok){online=ok;document.body.classList.toggle('linked',ok);$('#conn').classList.toggle('ok',ok);
   $('#connT').textContent=ok?'เชื่อมต่อ '+(dev&&dev.name||'ESP32')+' แล้ว':'ยังไม่ได้เชื่อมต่อ';
   $('#connBtn').textContent=ok?'ตัดการเชื่อมต่อ':'เชื่อมต่อ';$('#connBtn').classList.toggle('off',ok);
-  if(!ok)$('#cpu').textContent='CPU –';}
+  if(!ok){$('#cpu').textContent='CPU –';meters(null);}}
 async function gattConnect(){
   const srv=await dev.gatt.connect(),svc=await srv.getPrimaryService(NUS);
   rxC=await svc.getCharacteristic(RXU);const tx=await svc.getCharacteristic(TXU);
@@ -304,7 +371,7 @@ async function connect(){
   try{msg('กำลังค้นหา…');
     dev=await navigator.bluetooth.requestDevice({filters:[{services:[NUS]},{namePrefix:'ESP32-DSP'}],optionalServices:[NUS]});
     dev.addEventListener('gattserverdisconnected',()=>{rxC=null;setConn(false);msg('การเชื่อมต่อหลุด กดเชื่อมต่อใหม่',1);});
-    msg('กำลังเชื่อมต่อ…');await gattConnect();
+    msg('กำลังเชื่อมต่อ…');await gattConnect();msg('');
   }catch(e){msg(e&&e.name==='NotFoundError'?'ยกเลิกการเลือกอุปกรณ์':'เชื่อมต่อไม่สำเร็จ: '+(e&&e.message||e),1);}
 }
 if(!navigator.bluetooth&&!NATIVE)$('#noBle').classList.remove('hidden');
@@ -316,200 +383,276 @@ window.bleOnStatus=(t,bad)=>msg(t,bad);
 
 /* ---------- แท็บ ---------- */
 function showTab(t){$$('.tab').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));$$('.pane').forEach(p=>p.hidden=p.dataset.pane!==t);
-  try{localStorage.setItem('dspTab',t)}catch(e){} graphs.forEach(g=>g.resize());rta.resize();}
+  try{localStorage.setItem('dspTab2',t)}catch(e){} graphs.forEach(g=>g.resize());rta.resize();window.scrollTo(0,0);}
 $$('.tab').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
 
-/* ---------- ตัวควบคุม ---------- */
+/* ---------- ตัวควบคุมพื้นฐาน ---------- */
 const ctls=[];let sid=0;
 function slider(parent,o){
   const id='s'+(++sid),el=document.createElement('div');el.className='ctl';
   el.innerHTML=`<div class="ctl-row"><label for="${id}">${o.label}</label><output for="${id}"></output></div><input type="range" id="${id}">`;
-  const inp=el.querySelector('input'),out=el.querySelector('output');
+  const inp=el.querySelector('input'),out=el.querySelector('output'),lab=el.querySelector('label');
   if(o.log){inp.min=0;inp.max=1000;inp.step=1;}else{inp.min=o.min;inp.max=o.max;inp.step=o.step||0.1;}
   const toPos=v=>o.log?1000*Math.log(v/o.min)/Math.log(o.max/o.min):v;
   const fromPos=p=>o.log?o.min*Math.pow(o.max/o.min,p/1000):p;
   const fill=()=>inp.style.setProperty('--p',((inp.value-inp.min)/(inp.max-inp.min)*100)+'%');
-  const refresh=()=>{inp.value=toPos(o.get());out.textContent=o.fmt(o.get());fill();
+  const refresh=()=>{if(o.hide){el.classList.toggle('hidden',o.hide());}if(typeof o.label==='function')lab.textContent=o.label();
+    inp.value=toPos(o.get());out.textContent=o.fmt(o.get());fill();
     if(o.disabled){const d=o.disabled();inp.disabled=d;el.classList.toggle('disabled',d);}};
-  const commit=v=>{o.set(v);out.textContent=o.fmt(o.get());fill();send(o.send());changed();};
+  const commit=v=>{o.set(v);out.textContent=o.fmt(o.get());fill();send(o.send());changed();if(o.after)o.after();};
   inp.addEventListener('input',()=>{let v=fromPos(+inp.value);if(o.round)v=o.round(v);commit(v);});
   inp.addEventListener('dblclick',()=>{if(o.def!==undefined){commit(o.def);refresh();}});
   parent.appendChild(el);ctls.push(refresh);refresh();
 }
-const r1=v=>Math.round(v*10)/10,ri=v=>Math.round(v),r2=v=>Math.round(v*100)/100;
-function P(parent,k,label,o){slider(parent,Object.assign({label,get:()=>S[k],set:v=>S[k]=v,send:()=>({[k]:S[k]})},o));}
-function B(parent,arr,pre,selFn,label,o){slider(parent,Object.assign({label,get:()=>S[arr][selFn()],set:v=>S[arr][selFn()]=v,send:()=>({[pre+selFn()]:S[arr][selFn()]})},o));}
+// ตัวเลื่อนที่ผูกกับคีย์ (คีย์อาจเปลี่ยนตามช่องที่เลือก)
+function K(parent,key,label,o){const kf=typeof key==='function'?key:()=>key;
+  slider(parent,Object.assign({label,get:()=>S[kf()],set:v=>S[kf()]=v,send:()=>({[kf()]:S[kf()]})},o));}
+// ปุ่มเปิด/ปิด ผูกกับคีย์
+function tog(el,key,on,off,o){o=o||{};const kf=typeof key==='function'?key:()=>key;
+  const refresh=()=>{const v=!!S[kf()];el.setAttribute('aria-pressed',v);if(on)el.textContent=v?on:(off||on);};
+  el.onclick=()=>{const k=kf();S[k]=S[k]?0:1;send({[k]:S[k]});refresh();changed();if(o.after)o.after();};
+  ctls.push(refresh);refresh();}
+function selBind(el,key,o){o=o||{};const kf=typeof key==='function'?key:()=>key;
+  el.onchange=()=>{const k=kf();S[k]=+el.value;send({[k]:S[k]});changed();if(o.after)o.after();};
+  ctls.push(()=>{el.value=S[kf()];});}
 
-P($('#c-master'),'gain','Master volume',{min:-40,max:6,step:0.5,def:-12,fmt:fmtDb});
-P($('#c-in'),'ing','Input gain',{min:-24,max:12,step:0.5,def:0,fmt:fmtDb});
-P($('#c-lim'),'limT','เพดาน (Threshold)',{min:-24,max:0,step:0.5,def:-1,fmt:fmtDb});
-P($('#c-bal'),'bal','ซ้าย ← → ขวา',{min:-100,max:100,step:1,def:0,fmt:v=>v==0?'กลาง':(v<0?'ซ้าย ':'ขวา ')+Math.abs(Math.round(v))+'%'});
-const bm=$('#c-bandM'),gM=()=>selM;
-B(bm,'bf','bf',gM,'ความถี่ (Frequency)',{min:20,max:20000,log:true,round:ri,fmt:fmtHz});
-B(bm,'bg','bg',gM,'เกน (Gain)',{min:-18,max:18,step:0.1,def:0,fmt:fmtDb,disabled:()=>S.bt[selM]==NOTCH});
-B(bm,'bq','bq',gM,'ความกว้าง (Q)',{min:0.1,max:18,log:true,round:r2,fmt:v=>(+v).toFixed(2),disabled:()=>S.bt[selM]==LS||S.bt[selM]==HS});
-P($('#c-align'),'aL','ลำโพงซ้าย',{min:0,max:10,step:0.05,def:0,fmt:fmtMs});
-P($('#c-align'),'aR','ลำโพงขวา',{min:0,max:10,step:0.05,def:0,fmt:fmtMs});
-P($('#c-subLvl'),'subG','ระดับซับ',{min:-24,max:12,step:0.5,def:0,fmt:fmtDb});
-P($('#c-xo'),'xF','ความถี่ตัด (Low-pass)',{min:40,max:300,log:true,round:ri,def:100,fmt:fmtHz});
-P($('#c-xo2'),'subHp','Subsonic (กันซับตีลม)',{min:10,max:60,step:1,def:25,fmt:fmtHz});
-P($('#c-xo2'),'subD','ดีเลย์ซับ',{min:0,max:10,step:0.05,def:0,fmt:fmtMs});
-const bs=$('#c-bandS'),gS=()=>selS;
-B(bs,'sf','sf',gS,'ความถี่ (Frequency)',{min:15,max:500,log:true,round:ri,fmt:fmtHz});
-B(bs,'sg','sg',gS,'เกน (Gain)',{min:-18,max:12,step:0.1,def:0,fmt:fmtDb});
-B(bs,'sq','sq',gS,'ความกว้าง (Q)',{min:0.3,max:10,log:true,round:r2,fmt:v=>(+v).toFixed(2)});
-P($('#c-flt'),'hp','High-pass (ตัดเสียงต่ำ)',{min:20,max:2000,log:true,round:ri,fmt:fmtHz});
-P($('#c-flt'),'lp','Low-pass (ตัดเสียงสูง)',{min:500,max:20000,log:true,round:ri,fmt:fmtHz});
-const cc=$('#c-comp');
-P(cc,'thr','Threshold',{min:-60,max:0,step:0.5,fmt:fmtDb});
-P(cc,'ratio','Ratio',{min:1,max:20,step:0.1,fmt:v=>(+v).toFixed(1)+':1'});
-P(cc,'att','Attack',{min:0.1,max:200,log:true,round:r1,fmt:v=>(v<10?(+v).toFixed(1):Math.round(v))+' ms'});
-P(cc,'rel','Release',{min:10,max:2000,log:true,round:ri,fmt:v=>Math.round(v)+' ms'});
-P(cc,'knee','Knee',{min:0,max:24,step:1,fmt:v=>(+v).toFixed(0)+' dB'});
-P(cc,'mk','Makeup gain',{min:0,max:24,step:0.5,def:0,fmt:fmtDb});
-const dc=$('#c-dly');
-P(dc,'dt','เวลา',{min:20,max:299,log:true,round:ri,fmt:v=>Math.round(v)+' ms'});
-P(dc,'dfb','Feedback',{min:0,max:90,step:1,fmt:fmtPct});
-P(dc,'dtone','โทนเสียงสะท้อน (LPF)',{min:500,max:16000,log:true,round:ri,fmt:fmtHz});
-P(dc,'dmix','Mix',{min:0,max:100,step:1,fmt:fmtPct});
-P($('#c-rev'),'rsz','ขนาดห้อง (เวลาหาง)',{min:0.3,max:6,step:0.1,fmt:v=>(+v).toFixed(1)+' s'});
-P($('#c-rev'),'rmix','Mix',{min:0,max:100,step:1,fmt:fmtPct});
-
-/* ปุ่มเปิด/ปิด */
-$$('.toggle[data-mod]').forEach(t=>t.onclick=()=>{const m=t.dataset.mod;S[m]=S[m]?0:1;send({[m]:S[m]});refreshUI();changed();});
-$('#abBtn').onclick=()=>{S.byp=S.byp?0:1;send({byp:S.byp});refreshUI();changed();};
-$('#beT').onclick=()=>{S.be[selM]=S.be[selM]?0:1;send({['be'+selM]:S.be[selM]});refreshUI();changed();};
-$('#seT').onclick=()=>{S.se[selS]=S.se[selS]?0:1;send({['se'+selS]:S.se[selS]});refreshUI();changed();};
-$('#btype').onchange=e=>{S.bt[selM]=+e.target.value;send({['bt'+selM]:S.bt[selM]});refreshUI();changed();};
-$('#xSl').onchange=e=>{S.xSl=+e.target.value;send({xSl:S.xSl});refreshUI();changed();};
-$('#flatM').onclick=()=>{const o={};for(let k=0;k<NB;k++){S.bg[k]=0;o['bg'+k]=0;}send(o);refreshUI();changed();};
-$('#flatS').onclick=()=>{const o={};for(let k=0;k<NS;k++){S.sg[k]=0;o['sg'+k]=0;}send(o);refreshUI();changed();};
-
-const TYPES={1:'Low shelf',0:'Peak',2:'High shelf',5:'Notch'};
-function chips(box,n,sel,fArr,enArr,pick){box.innerHTML='';
-  for(let k=0;k<n;k++){const c=document.createElement('button');c.className='chip'+(S[enArr][k]?'':' dis');c.setAttribute('aria-pressed',k===sel);
-    c.innerHTML=`<b>${k+1}</b><small>${fmtHz(S[fArr][k])}</small>`;c.onclick=()=>pick(k);box.appendChild(c);}}
-function selectM(k){selM=k;refreshUI();changed();}
-function selectS(k){selS=k;refreshUI();changed();}
-
-/* ---------- พรีเซ็ต ---------- */
-const BASE=()=>({eq:1,bt:[1,0,0,0,0,0,0,0,0,2],bf:[32,64,125,250,500,1000,2000,4000,8000,16000],bg:Array(10).fill(0),bq:[.7,1.4,1.4,1.4,1.4,1.4,1.4,1.4,1.4,.7],be:Array(10).fill(1),
-  flt:0,hp:30,lp:18000,comp:0,thr:-18,ratio:3,att:10,rel:200,knee:6,mk:0,dly:0,dt:250,dfb:35,dmix:25,dtone:4000,rev:0,rsz:2.2,rmix:20});
-const PRESETS={
-  flat:{name:'แบน (Flat)',fn:s=>{}},
-  warm:{name:'อบอุ่น',fn:s=>{s.bg=[2.5,1.5,0.5,0,-1,0,0.5,1,1.5,2];Object.assign(s,{comp:1,thr:-20,ratio:2.5,mk:2});}},
-  bass:{name:'เบสหนัก',fn:s=>{s.bg=[6,5,3,0,-1.5,0,0,0,0.5,1];Object.assign(s,{comp:1,thr:-16,ratio:3,mk:1});}},
-  vocal:{name:'เสียงร้องชัด',fn:s=>{s.bg=[0,0,-1,-3,-1,0,3,4,2,1];Object.assign(s,{flt:1,hp:100,comp:1,thr:-24,ratio:4,mk:4});}},
-  party:{name:'ปาร์ตี้ (V-shape)',fn:s=>{s.bg=[5,4,2,0,-2,-2,0,2,4,4];Object.assign(s,{comp:1,thr:-18,ratio:3,mk:2});}},
-  outdoor:{name:'กลางแจ้ง',fn:s=>{s.bg=[3,2,0,-1,-1,0,2,3,2,0];Object.assign(s,{comp:1,thr:-20,ratio:3,att:5,rel:150,mk:3});}},
-  hall:{name:'ห้องโถง',fn:s=>{s.bg=[1,0.5,0,0,0,0,0,0,-1,-2];Object.assign(s,{rev:1,rsz:3.5,rmix:35});}},
-  lofi:{name:'Lo-fi',fn:s=>{s.bg=[0,0,2,2,0,0,-2,-3,-6,-6];Object.assign(s,{flt:1,hp:150,lp:5000,dly:1,dt:250,dfb:25,dmix:20,comp:1,thr:-22,ratio:4,mk:3});}}
-};
-const ps=$('#preset');
-Object.entries(PRESETS).forEach(([k,p])=>{const o=document.createElement('option');o.value=k;o.textContent=p.name;ps.appendChild(o);});
-ps.onchange=()=>{if(!ps.value)return;const b=BASE();PRESETS[ps.value].fn(b);Object.assign(S,b);
-  const all={};Object.keys(b).forEach(k=>{if(Array.isArray(b[k]))b[k].forEach((v,i)=>all[k+i]=v);else all[k]=b[k];});
-  send(all);refreshUI();changed();msg('ใช้พรีเซ็ต: '+PRESETS[ps.value].name);};
-
-function refreshUI(){
-  ctls.forEach(f=>f());
-  $$('.toggle[data-mod]').forEach(t=>{const v=!!S[t.dataset.mod];t.setAttribute('aria-pressed',v);t.textContent=v?(t.dataset.on||'ON'):(t.dataset.off||'BYPASS');});
-  [['#beT',S.be[selM]],['#seT',S.se[selS]]].forEach(([id,v])=>{$(id).setAttribute('aria-pressed',!!v);$(id).textContent=v?'ใช้แบนด์นี้':'ปิดแบนด์นี้';});
-  $('#abBtn').setAttribute('aria-pressed',!!S.byp);
-  $('#abBtn').textContent=S.byp?'A/B: กำลังบายพาสเอฟเฟกต์ (กดเพื่อกลับ)':'A/B: บายพาสเอฟเฟกต์';
-  $('#btype').value=S.bt[selM];$('#xSl').value=Math.round(S.xSl);
-  $('#slNote').classList.toggle('hidden',Math.round(S.xSl)!==0);
-  $('#bandMT').textContent='แบนด์ '+(selM+1)+' · '+TYPES[S.bt[selM]];$('#bandST').textContent='แบนด์ '+(selS+1);
-  chips($('#chipsM'),NB,selM,'bf','be',selectM);chips($('#chipsS'),NS,selS,'sf','se',selectS);
-}
-
-/* ---------- สูตรฟิลเตอร์ (เหมือนใน ESP32) ---------- */
+/* ---------- คณิตศาสตร์ตัวกรอง (ตรงกับเฟิร์มแวร์ FS 44100) ---------- */
+const T_PEAK=0,T_LS=1,T_HS=2,T_LP=3,T_HP=4;
 function coef(t,f,g,Q){f=Math.min(f,FS*.45);const A=Math.pow(10,g/40),w=2*Math.PI*f/FS,cw=Math.cos(w),sw=Math.sin(w),al=sw/(2*Q);let b0,b1,b2,a0,a1,a2,s;
-  switch(t){
-    case LS:s=2*Math.sqrt(A)*al;b0=A*((A+1)-(A-1)*cw+s);b1=2*A*((A-1)-(A+1)*cw);b2=A*((A+1)-(A-1)*cw-s);a0=(A+1)+(A-1)*cw+s;a1=-2*((A-1)+(A+1)*cw);a2=(A+1)+(A-1)*cw-s;break;
-    case HS:s=2*Math.sqrt(A)*al;b0=A*((A+1)+(A-1)*cw+s);b1=-2*A*((A-1)+(A+1)*cw);b2=A*((A+1)+(A-1)*cw-s);a0=(A+1)-(A-1)*cw+s;a1=2*((A-1)-(A+1)*cw);a2=(A+1)-(A-1)*cw-s;break;
-    case LP:b0=(1-cw)/2;b1=1-cw;b2=(1-cw)/2;a0=1+al;a1=-2*cw;a2=1-al;break;
-    case HP:b0=(1+cw)/2;b1=-(1+cw);b2=(1+cw)/2;a0=1+al;a1=-2*cw;a2=1-al;break;
-    case NOTCH:b0=1;b1=-2*cw;b2=1;a0=1+al;a1=-2*cw;a2=1-al;break;
-    default:b0=1+al*A;b1=-2*cw;b2=1-al*A;a0=1+al/A;a1=-2*cw;a2=1-al/A;}
-  return [b0/a0,b1/a0,b2/a0,a1/a0,a2/a0];}
-function magDb(c,f){const w=2*Math.PI*f/FS,c1=Math.cos(w),c2=Math.cos(2*w);const[b0,b1,b2,a1,a2]=c;
-  const n=b0*b0+b1*b1+b2*b2+2*(b0*b1+b1*b2)*c1+2*b0*b2*c2,d=1+a1*a1+a2*a2+2*(a1+a1*a2)*c1+2*a2*c2;return 10*Math.log10(Math.max(n,1e-12)/Math.max(d,1e-12));}
-const SLQ=[[.7071],[.7071,.7071],[.5412,1.3066,.5412,1.3066]];
-let C=null;
-function coefs(){const q=SLQ[clamp(Math.round(S.xSl),0,2)];
-  C={b:S.bf.map((f,k)=>coef(S.bt[k],f,S.bg[k],S.bq[k])),s:S.sf.map((f,k)=>coef(PEAK,f,S.sg[k],S.sq[k])),
-     hp:coef(HP,S.hp,0,.7071),lp:coef(LP,S.lp,0,.7071),xh:q.map(Q=>coef(HP,S.xF,0,Q)),xl:q.map(Q=>coef(LP,S.xF,0,Q)),ss:coef(HP,S.subHp,0,.7071)};}
-const eqDb=f=>{let d=0;if(on('eq'))for(let k=0;k<NB;k++)if(S.be[k])d+=magDb(C.b[k],f);if(on('flt'))d+=magDb(C.hp,f)+magDb(C.lp,f);return d;};
-const subEqDb=f=>{let d=0;if(S.seq)for(let k=0;k<NS;k++)if(S.se[k])d+=magDb(C.s[k],f);return d;};
-const mainOut=f=>eqDb(f)+C.xh.reduce((a,c)=>a+magDb(c,f),0);
-const subOut=f=>eqDb(f)+C.xl.reduce((a,c)=>a+magDb(c,f),0)+magDb(C.ss,f)+subEqDb(f)+S.subG;
+  switch(t){case T_PEAK:b0=1+al*A;b1=-2*cw;b2=1-al*A;a0=1+al/A;a1=-2*cw;a2=1-al/A;break;
+    case T_LS:s=2*Math.sqrt(A)*al;b0=A*((A+1)-(A-1)*cw+s);b1=2*A*((A-1)-(A+1)*cw);b2=A*((A+1)-(A-1)*cw-s);a0=(A+1)+(A-1)*cw+s;a1=-2*((A-1)+(A+1)*cw);a2=(A+1)+(A-1)*cw-s;break;
+    case T_HS:s=2*Math.sqrt(A)*al;b0=A*((A+1)+(A-1)*cw+s);b1=-2*A*((A-1)+(A+1)*cw);b2=A*((A+1)+(A-1)*cw-s);a0=(A+1)-(A-1)*cw+s;a1=2*((A-1)-(A+1)*cw);a2=(A+1)-(A-1)*cw-s;break;
+    case T_LP:b0=(1-cw)/2;b1=1-cw;b2=(1-cw)/2;a0=1+al;a1=-2*cw;a2=1-al;break;
+    default:b0=(1+cw)/2;b1=-(1+cw);b2=(1+cw)/2;a0=1+al;a1=-2*cw;a2=1-al;}
+  return[b0/a0,b1/a0,b2/a0,a1/a0,a2/a0];}
+// ผลตอบสนองเชิงซ้อนของ biquad ที่ความถี่ f: [re, im]
+function cH(c,f){const w=2*Math.PI*f/FS,c1=Math.cos(w),s1=Math.sin(w),c2=Math.cos(2*w),s2=Math.sin(2*w);const[b0,b1,b2,a1,a2]=c;
+  const nr=b0+b1*c1+b2*c2,ni=-(b1*s1+b2*s2),dr=1+a1*c1+a2*c2,di=-(a1*s1+a2*s2),d=dr*dr+di*di;
+  return[(nr*dr+ni*di)/d,(ni*dr-nr*di)/d];}
+const cmul=(a,b)=>[a[0]*b[0]-a[1]*b[1],a[0]*b[1]+a[1]*b[0]];
+const mag=z=>20*Math.log10(Math.max(1e-9,Math.hypot(z[0],z[1])));
+const XQ=[[[0.70711],[0.54120,1.30656],[0.50980,0.60134,0.89998,2.56292]],[[0.5],[0.70711,0.70711],[0.54120,1.30656,0.54120,1.30656]]];
+const xover=(t,f,type,slope)=>XQ[type][slope].map(q=>coef(t,f,0,q));
+const eqSet=(p,on)=>{const r=[];if(!on)return r;for(let b=0;b<NB;b++)if(S[p+'e'+b]&&Math.abs(S[p+'g'+b])>0.01)r.push(coef(S[p+'t'+b],S[p+'f'+b],S[p+'g'+b],S[p+'q'+b]));return r;};
+// คำนวณใหม่เฉพาะตอนค่าเปลี่ยน
+let C={};
+function coefs(){
+  const st=stereo();
+  C.in=eqSet('i',S.ieq).concat(S.ss?xover(T_HP,S.ssf,0,S.sss?1:0):[]);
+  C.xo=[xover(T_LP,S.x1,S.ft0,S.fs0),
+        st?xover(T_HP,S.x1,S.ft1,S.fs1):xover(T_HP,S.x1,S.ft1,S.fs1).concat(xover(T_LP,S.x2,S.ft2,S.fs2)),
+        st?xover(T_HP,S.x1,S.ft1,S.fs1):xover(T_HP,S.x2,S.ft3,S.fs3)];
+  C.eq=[0,1,2].map(c=>eqSet('c'+c,S['c'+c+'eq']));
+  C.ieqOnly=eqSet('i',S.ieq);
+}
+const resp=(list,f)=>list.reduce((z,c)=>cmul(z,cH(c,f)),[1,0]);
+// เสียงออกของช่อง c (เชิงซ้อน) รวมขาเข้า ครอส อีคิว เกน เฟส ดีเลย์
+function chZ(c,f,withIn){let z=resp(C.xo[c].concat(C.eq[c]),f);if(withIn!==false)z=cmul(z,resp(C.in,f));
+  let g=Math.pow(10,S['c'+c+'gn']/20)*(S['c'+c+'iv']?-1:1);
+  if(stereo()&&c==1&&S.bal>0)g*=1-S.bal/100;if(stereo()&&c==2&&S.bal<0)g*=1+S.bal/100;
+  const ph=-2*Math.PI*f*S['c'+c+'dl']/1000;return cmul([z[0]*g,z[1]*g],[Math.cos(ph),Math.sin(ph)]);}
+const chOn=c=>{const any=[0,1,2].some(k=>S['c'+k+'so']);return !S['c'+c+'mu']&&(!any||S['c'+c+'so']);};
 
-/* ---------- กราฟ (ใช้ได้ทั้ง EQ หลักและ EQ ซับ) ---------- */
-const COL={};(()=>{const cs=getComputedStyle(document.documentElement);['line','text','muted','accent','panel-2','signal','sub'].forEach(k=>COL[k]=cs.getPropertyValue('--'+k).trim());})();
-const MONO=getComputedStyle(document.documentElement).getPropertyValue('--mono');
+/* ---------- กราฟ ---------- */
 function Graph(cv,o){
   const g=cv.getContext('2d'),G={W:0,H:0,L:8,R:0,T:10,B:0};let dpr=1,drag=-1;
-  const LF=Math.log10(o.fmin),LR=Math.log10(o.fmax/o.fmin),R=o.range;
+  const LF=Math.log10(o.fmin),LR=Math.log10(o.fmax/o.fmin),Y0=o.ymax,Y1=o.ymin;
   const xOf=f=>G.L+(Math.log10(f)-LF)/LR*(G.R-G.L),fOf=x=>Math.pow(10,LF+(x-G.L)/(G.R-G.L)*LR);
-  const yOf=d=>(G.T+G.B)/2-d/R*(G.B-G.T)/2,dOf=y=>((G.T+G.B)/2-y)/((G.B-G.T)/2)*R;
+  const yOf=d=>G.T+(Y0-d)/(Y0-Y1)*(G.B-G.T),dOf=y=>Y0-(y-G.T)/(G.B-G.T)*(Y0-Y1);
   function resize(){const r=cv.getBoundingClientRect();if(!r.width)return;dpr=window.devicePixelRatio||1;G.W=r.width;G.H=r.height;G.R=G.W-34;G.B=G.H-22;cv.width=r.width*dpr;cv.height=r.height*dpr;draw();}
-  function path(fn,n){g.beginPath();for(let i=0;i<n;i++){const x=G.L+i/(n-1)*(G.R-G.L),y=clamp(yOf(fn(fOf(x))),G.T,G.B);i?g.lineTo(x,y):g.moveTo(x,y);}}
+  function path(fn,n){g.beginPath();for(let i=0;i<n;i++){const x=G.L+i/(n-1)*(G.R-G.L),y=clamp(yOf(fn(fOf(x))),G.T-2,G.B+2);i?g.lineTo(x,y):g.moveTo(x,y);}}
   function draw(){if(!G.W)return;g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,G.W,G.H);g.font='11px '+MONO;g.lineWidth=1;
     o.ticks.forEach(([f,l])=>{const x=Math.round(xOf(f))+.5;g.strokeStyle=COL.line;g.globalAlpha=.6;g.beginPath();g.moveTo(x,G.T);g.lineTo(x,G.B);g.stroke();g.globalAlpha=1;
       g.fillStyle=COL.muted;g.textAlign=f===o.fmin?'left':'center';g.fillText(l,f===o.fmin?x-2:x,G.H-6);});
-    [12,6,0,-6,-12].forEach(d=>{const y=Math.round(yOf(d))+.5;g.strokeStyle=COL.line;g.globalAlpha=d===0?1:.6;g.beginPath();g.moveTo(G.L,y);g.lineTo(G.R,y);g.stroke();g.globalAlpha=1;
+    o.yt.forEach(d=>{const y=Math.round(yOf(d))+.5;g.strokeStyle=COL.line;g.globalAlpha=d===0?1:.6;g.beginPath();g.moveTo(G.L,y);g.lineTo(G.R,y);g.stroke();g.globalAlpha=1;
       g.fillStyle=COL.muted;g.textAlign='left';g.fillText((d>0?'+':d<0?'−':'')+Math.abs(d),G.R+5,y+4);});
-    const n=Math.max(60,Math.round((G.R-G.L)/2));
-    const sel=o.sel(),sc=o.selCoef();
-    if(sc){path(f=>magDb(sc,f),n);g.lineTo(G.R,yOf(0));g.lineTo(G.L,yOf(0));g.closePath();g.fillStyle='rgba(242,163,58,.15)';g.fill();}
-    o.curves().forEach(c=>{path(c.fn,n);g.strokeStyle=c.col;g.lineWidth=c.w||2;g.setLineDash(c.dash||[]);g.stroke();g.setLineDash([]);});
+    const n=Math.max(80,Math.round((G.R-G.L)/2));
+    const fill=o.fill&&o.fill();
+    if(fill){path(fill,n);g.lineTo(G.R,yOf(0));g.lineTo(G.L,yOf(0));g.closePath();g.fillStyle='rgba(242,163,58,.15)';g.fill();}
+    o.curves().forEach(c=>{path(c.fn,n);g.strokeStyle=c.col;g.lineWidth=c.w||2;g.globalAlpha=c.a||1;g.setLineDash(c.dash||[]);g.stroke();g.setLineDash([]);g.globalAlpha=1;});
     g.font='600 11px '+MONO;g.textAlign='center';
-    for(let k=0;k<o.count;k++){const p=o.point(k),x=xOf(p.f),y=yOf(p.g);
-      g.beginPath();g.arc(x,y,k===sel?10:8.5,0,Math.PI*2);g.fillStyle=k===sel?COL.accent:COL['panel-2'];g.globalAlpha=p.on?1:.4;g.fill();
-      g.strokeStyle=COL.accent;g.lineWidth=1.5;g.stroke();g.fillStyle=k===sel?'#1a1307':COL.text;g.fillText(k+1,x,y+4);g.globalAlpha=1;}}
+    const pts=o.points(),sel=o.sel?o.sel():-1;
+    pts.forEach((p,k)=>{const x=xOf(p.f),y=clamp(yOf(p.g),G.T+9,G.B-9),col=p.col||COL.accent,on=k===sel;
+      g.beginPath();g.arc(x,y,on?10:8.5,0,Math.PI*2);g.fillStyle=on?col:COL['panel-2'];g.globalAlpha=p.on===false?.4:1;g.fill();
+      g.strokeStyle=col;g.lineWidth=1.5;g.stroke();g.fillStyle=on?'#10141a':COL.text;g.fillText(p.label,x,y+4);g.globalAlpha=1;});}
   const pt=e=>{const r=cv.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top];};
-  function hit(x,y){let best=-1,bd=28;for(let k=0;k<o.count;k++){const p=o.point(k),d=Math.hypot(xOf(p.f)-x,yOf(p.g)-y);if(d<bd){bd=d;best=k;}}return best;}
-  cv.addEventListener('pointerdown',e=>{const[x,y]=pt(e),k=hit(x,y);if(k<0)return;drag=k;if(k!==o.sel())o.pick(k);cv.setPointerCapture(e.pointerId);e.preventDefault();});
-  cv.addEventListener('pointermove',e=>{if(drag<0)return;const[x,y]=pt(e);o.drag(drag,Math.round(clamp(fOf(x),o.fmin,o.fmax)),Math.round(clamp(dOf(y),-R,R)*10)/10);});
+  function hit(x,y){let best=-1,bd=28;o.points().forEach((p,k)=>{const d=Math.hypot(xOf(p.f)-x,clamp(yOf(p.g),G.T+9,G.B-9)-y);if(d<bd){bd=d;best=k;}});return best;}
+  cv.addEventListener('pointerdown',e=>{const[x,y]=pt(e),k=hit(x,y);if(k<0)return;drag=k;if(o.pick)o.pick(k);cv.setPointerCapture(e.pointerId);e.preventDefault();});
+  cv.addEventListener('pointermove',e=>{if(drag<0)return;const[x,y]=pt(e);o.drag(drag,clamp(fOf(x),o.fmin,o.fmax),Math.round(clamp(dOf(y),Y1,Y0)*10)/10);});
   const end=()=>{if(drag>=0){drag=-1;refreshUI();}};
   cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
-  cv.addEventListener('dblclick',e=>{const[x,y]=pt(e),k=hit(x,y);if(k>=0)o.reset(k);});
+  cv.addEventListener('dblclick',e=>{const[x,y]=pt(e),k=hit(x,y);if(k>=0&&o.reset)o.reset(k);});
   new ResizeObserver(resize).observe(cv.parentElement);
   return {draw,resize};
 }
-const gMain=Graph($('#gMain'),{fmin:20,fmax:20000,range:18,count:NB,
-  ticks:[[20,'20'],[50,'50'],[100,'100'],[200,'200'],[500,'500'],[1000,'1k'],[2000,'2k'],[5000,'5k'],[10000,'10k'],[20000,'20k']],
-  sel:()=>selM,selCoef:()=>on('eq')?C.b[selM]:null,
-  point:k=>({f:S.bf[k],g:S.bt[k]==NOTCH?0:S.bg[k],on:on('eq')&&S.be[k]}),
-  curves:()=>{const c=[{fn:eqDb,col:COL.accent,w:2.2,dash:S.byp?[5,5]:[]}];if(S.x21){c.push({fn:mainOut,col:COL.signal,w:1.5,dash:[4,3]},{fn:subOut,col:COL.sub,w:1.5,dash:[4,3]});}return c;},
-  pick:selectM,drag:(k,f,g)=>{S.bf[k]=f;const o={['bf'+k]:f};if(S.bt[k]!=NOTCH){S.bg[k]=g;o['bg'+k]=g;}send(o);ctls.forEach(x=>x());changed();},
-  reset:k=>{S.bg[k]=0;send({['bg'+k]:0});refreshUI();changed();}});
-const gSub=Graph($('#gSub'),{fmin:15,fmax:500,range:18,count:NS,
-  ticks:[[15,'15'],[20,'20'],[30,'30'],[50,'50'],[100,'100'],[200,'200'],[300,'300'],[500,'500']],
-  sel:()=>selS,selCoef:()=>S.seq?C.s[selS]:null,
-  point:k=>({f:S.sf[k],g:S.sg[k],on:!!S.seq&&!!S.se[k]}),
-  curves:()=>{const c=[{fn:subEqDb,col:COL.accent,w:2}];if(S.x21)c.unshift({fn:subOut,col:COL.sub,w:2.4});return c;},
-  pick:selectS,drag:(k,f,g)=>{S.sf[k]=f;S.sg[k]=clamp(g,-18,12);send({['sf'+k]:f,['sg'+k]:S.sg[k]});ctls.forEach(x=>x());changed();},
-  reset:k=>{S.sg[k]=0;send({['sg'+k]:0});refreshUI();changed();}});
-const graphs=[gMain,gSub];
-let dirty=true;
-function changed(){dirty=true;}
-(function frame(){if(dirty){dirty=false;coefs();graphs.forEach(g=>g.draw());}requestAnimationFrame(frame);})();
+const TK=[[20,'20'],[50,'50'],[100,'100'],[200,'200'],[500,'500'],[1000,'1k'],[2000,'2k'],[5000,'5k'],[10000,'10k'],[20000,'20k']];
+const snapF=f=>f<100?Math.round(f):f<1000?Math.round(f/5)*5:Math.round(f/50)*50;
 
-/* ---------- มิเตอร์จาก ESP32 ---------- */
+/* ---------- ตัวแก้อีคิว 6 แบนด์ (ใช้ทั้งขาเข้าและช่องออก) ---------- */
+function EqEditor(box,pre,selGet,selSet,gmin,gmax){
+  box.innerHTML=`<div class="chips"></div><div class="band"><div class="bh"><b></b><button class="toggle" aria-pressed="true">ใช้แบนด์นี้</button></div>
+    <label class="sel">ชนิดฟิลเตอร์<select><option value="0">Peak (Bell)</option><option value="1">Low shelf</option><option value="2">High shelf</option></select></label><div class="ctls"></div></div>`;
+  const chipsEl=box.querySelector('.chips'),title=box.querySelector('.bh b'),en=box.querySelector('.bh .toggle'),ty=box.querySelector('select'),cc=box.querySelector('.ctls');
+  const k=s=>pre()+s+selGet();
+  tog(en,()=>k('e'),'ใช้แบนด์นี้','ปิดแบนด์นี้');
+  selBind(ty,()=>k('t'));
+  K(cc,()=>k('f'),'ความถี่',{min:15,max:20000,log:1,round:snapF,fmt:fmtHz});
+  K(cc,()=>k('g'),'เกน',{min:gmin,max:gmax,step:0.5,def:0,fmt:fmtDb});
+  K(cc,()=>k('q'),'Q (ความกว้าง)',{min:0.3,max:10,log:1,round:r2,fmt:v=>(+v).toFixed(2)});
+  function chips(){chipsEl.innerHTML='';for(let b=0;b<NB;b++){const p=pre();const btn=document.createElement('button');btn.className='chip';
+    btn.setAttribute('aria-pressed',b===selGet());btn.classList.toggle('dis',!S[p+'e'+b]);
+    btn.innerHTML=`<b>${b+1}</b><small>${fmtHz(S[p+'f'+b]).replace(' ','')}</small>`;btn.onclick=()=>{selSet(b);refreshUI();};chipsEl.appendChild(btn);}
+    title.textContent='แบนด์ '+(selGet()+1);}
+  ctls.push(chips);
+}
+function eqPoints(pre){const r=[];for(let b=0;b<NB;b++)r.push({f:S[pre+'f'+b],g:S[pre+'g'+b],on:!!S[pre+'e'+b],label:b+1});return r;}
+function eqDrag(pre){return (b,f,g)=>{f=snapF(f);g=clamp(g,-18,12);S[pre()+'f'+b]=f;S[pre()+'g'+b]=g;send({[pre()+'f'+b]:f,[pre()+'g'+b]:g});ctls.forEach(x=>x());changed();};}
+
+/* ---------- หน้าหลัก ---------- */
+const MK=[['in','ขาเข้า',null],['sub','ซับ','lim_sub'],['mid','กลาง','lim_mid'],['hi','แหลม','lim_hi']];
+$('#meters').innerHTML=MK.map(([k,l,lk])=>`<div class="vm"><output id="o_${k}">−∞</output><div class="vbar"><div class="vfill" id="m_${k}"></div><div class="vpeak" id="p_${k}"></div></div><b id="n_${k}">${l}</b><span class="lim${lk?'':' na'}" id="l_${k}">LIM</span></div>`).join('');
 const hold={};
 function setMeter(k,d){
   const pc=v=>clamp((v+60)/60,0,1)*100,now=performance.now(),h=hold[k]||(hold[k]={v:-90,t:0});
   if(d>=h.v){h.v=d;h.t=now;}else if(now-h.t>900)h.v=Math.max(-90,h.v-1.5);
-  const f=$('#m_'+k);f.style.width=pc(d)+'%';f.style.setProperty('--full',f.parentElement.clientWidth+'px');
-  $('#p_'+k).style.left=`calc(${pc(h.v)}% - 2px)`;
-  const o=$('#o_'+k);o.textContent=h.v<=-89?'−∞':(h.v>0?'+':'')+h.v.toFixed(0);o.classList.toggle('clip',h.v>-0.5);
-}
+  $('#m_'+k).style.height=pc(d)+'%';$('#p_'+k).style.bottom=`calc(${pc(h.v)}% - 2px)`;
+  const o=$('#o_'+k);o.textContent=h.v<=-89?'−∞':(h.v>0?'+':'')+h.v.toFixed(0);o.classList.toggle('clip',h.v>-0.5);}
 function meters(m){
-  setMeter('in',Math.max(m.il,m.ir));['ol','or','os'].forEach(k=>{if(m[k]!==undefined)setMeter(k,m[k]);});
-  $('#grFill').style.width=clamp(-m.gr/20,0,1)*100+'%';$('#grOut').textContent=fmtDb(m.gr);
-  $('#cpu').textContent='CPU '+Math.round(m.cpu)+'%';}
+  if(!m){MK.forEach(([k])=>setMeter(k,-90));['sub','mid','hi'].forEach(k=>$('#l_'+k).classList.remove('on'));return;}
+  MK.forEach(([k,,lk])=>{if(m[k]!==undefined)setMeter(k,m[k]);if(lk)$('#l_'+k).classList.toggle('on',m[lk]>0.5);});
+  const gr=m[['lim_sub','lim_mid','lim_hi'][selCh]]||0;$('#grFill').style.width=clamp(gr/12,0,1)*100+'%';$('#grOut').textContent=fmtDb(-gr);
+  if(m.cpu!==undefined)$('#cpu').textContent='CPU '+Math.round(m.cpu)+'%';}
+
+// ปุ่มหมุนวอลุ่ม: −60 ถึง 0 dB, กวาด 270°
+const knob=$('#knob'),VMIN=-60,VMAX=0,A0=-135,A1=135;
+const kA=v=>A0+(v-VMIN)/(VMAX-VMIN)*(A1-A0);
+const pol=(a,r)=>[100+r*Math.sin(a*Math.PI/180),100-r*Math.cos(a*Math.PI/180)];
+const arc=(a0,a1,r)=>{const[x0,y0]=pol(a0,r),[x1,y1]=pol(a1,r);return`M${x0} ${y0}A${r} ${r} 0 ${a1-a0>180?1:0} 1 ${x1} ${y1}`;};
+function drawKnob(){const v=S.vol,a=kA(v),[px,py]=pol(a,58);
+  let ticks='';for(let d=VMIN;d<=VMAX;d+=10){const[x0,y0]=pol(kA(d),88),[x1,y1]=pol(kA(d),95);ticks+=`<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="${COL.muted}" stroke-width="2"/>`;}
+  knob.innerHTML=`${ticks}<path d="${arc(A0,A1,80)}" stroke="${COL.line}" stroke-width="9" fill="none" stroke-linecap="round"/>
+    <path d="${arc(A0,Math.max(A0+0.5,a),80)}" stroke="${COL.accent}" stroke-width="9" fill="none" stroke-linecap="round"/>
+    <circle cx="100" cy="100" r="66" fill="${COL['panel-2']}" stroke="${COL.line}"/>
+    <circle cx="${px}" cy="${py}" r="6" fill="${COL.accent}"/>
+    <text x="100" y="106" text-anchor="middle" font-size="26" font-weight="600" fill="${COL.text}">${v<=VMIN?'−∞':(v<0?'−':'')+Math.abs(v).toFixed(1)}</text>
+    <text x="100" y="128" text-anchor="middle" font-size="12" fill="${COL.muted}">dB</text>`;
+  knob.setAttribute('aria-valuenow',v);}
+function setVol(v){S.vol=Math.round(clamp(v,VMIN,VMAX)*2)/2;send({vol:S.vol});drawKnob();changed();}
+(()=>{let start=null;
+  const ang=e=>{const r=knob.getBoundingClientRect(),x=e.clientX-r.left-r.width/2,y=e.clientY-r.top-r.height/2;return Math.atan2(x,-y)*180/Math.PI;};
+  knob.addEventListener('pointerdown',e=>{knob.setPointerCapture(e.pointerId);start={a:ang(e),v:S.vol,y:e.clientY};e.preventDefault();});
+  knob.addEventListener('pointermove',e=>{if(!start)return;let da=ang(e)-start.a;if(da>180)da-=360;if(da<-180)da+=360;
+    // หมุนรอบปุ่ม หรือลากขึ้น-ลง ก็ได้
+    const byAng=da/(A1-A0)*(VMAX-VMIN),byY=(start.y-e.clientY)*0.25;
+    setVol(start.v+(Math.abs(byAng)>Math.abs(byY)?byAng:byY));});
+  const end=()=>{start=null;};knob.addEventListener('pointerup',end);knob.addEventListener('pointercancel',end);
+  knob.addEventListener('keydown',e=>{if(e.key==='ArrowUp'||e.key==='ArrowRight')setVol(S.vol+0.5);if(e.key==='ArrowDown'||e.key==='ArrowLeft')setVol(S.vol-0.5);});
+  $('#volUp').onclick=()=>setVol(S.vol+1);$('#volDn').onclick=()=>setVol(S.vol-1);
+  ctls.push(drawKnob);})();
+K($('#c-bal'),'bal','บาลานซ์ ซ้าย ← → ขวา',{min:-100,max:100,step:1,def:0,hide:()=>!stereo(),fmt:v=>v==0?'กลาง':(v<0?'ซ้าย ':'ขวา ')+Math.abs(Math.round(v))+'%'});
+$('#mutes').innerHTML=[0,1,2].map(c=>`<button data-c="${c}" aria-pressed="false"><span></span><i>เสียงเปิด</i></button>`).join('');
+$$('#mutes button').forEach(b=>{const c=+b.dataset.c,k='c'+c+'mu';
+  b.onclick=()=>{S[k]=S[k]?0:1;send({[k]:S[k]});refreshUI();changed();};
+  ctls.push(()=>{b.setAttribute('aria-pressed',!!S[k]);b.querySelector('span').textContent=CHN()[c];b.querySelector('i').textContent=S[k]?'ปิดเสียง':'เสียงเปิด';});});
+const ps=$('#presetSel');
+ps.onchange=()=>{const n=+ps.value;if(n<0)return;if(S['pn'+n]&&modeWarn(null))cmd('preset_load='+n);else refreshUI();};
+ctls.push(()=>{ps.innerHTML='<option value="-1">— เลือกพรีเซ็ต —</option>'+[0,1,2,3,4].map(i=>`<option value="${i}"${S['pn'+i]?'':' disabled'}>${i+1}. ${S['pn'+i]?esc(S['pn'+i]):'(ว่าง)'}</option>`).join('');ps.value=S.pre>=0&&S['pn'+S.pre]?S.pre:-1;
+  $('#pname').textContent=S.pre>=0&&S['pn'+S.pre]?'▸ '+S['pn'+S.pre]:'';
+  $('#modeT').textContent=stereo()?'สเตอริโอ 2.1':'โมโน 3 ทาง';
+  CHN().forEach((n,i)=>{const id=['sub','mid','hi'][i];$('#n_'+id).textContent=n;});});
+$('#saveBtn').onclick=()=>cmd('save');
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- ครอส ---------- */
+K($('#c-xo'),'x1',()=>stereo()?'จุดตัด ซับ / ซ้าย-ขวา':'จุดตัด ซับ / กลาง',{min:40,max:300,log:1,round:ri,fmt:fmtHz});
+K($('#c-xo'),'x2','จุดตัด กลาง / แหลม',{min:1000,max:8000,log:1,round:v=>Math.round(v/50)*50,fmt:fmtHz,hide:stereo});
+const XF=[['ซับ','low-pass',0],['กลาง','high-pass',1],['กลาง','low-pass',1],['แหลม','high-pass',2]];
+$('#xfList').innerHTML=XF.map((x,i)=>`<div class="xf" data-i="${i}"><b><i style="background:${CHC[x[2]]}"></i><span></span></b>
+  <select aria-label="ชนิด"><option value="0">Butterworth</option><option value="1">Linkwitz-Riley</option></select>
+  <select aria-label="ความชัน"><option value="0">12 dB</option><option value="1">24 dB</option><option value="2">48 dB</option></select></div>`).join('');
+$$('#xfList .xf').forEach(el=>{const i=+el.dataset.i,[t,s]=el.querySelectorAll('select');selBind(t,'ft'+i);selBind(s,'fs'+i);
+  ctls.push(()=>{el.classList.toggle('hidden',stereo()&&(i==2||i==3));el.querySelector('span').textContent=(stereo()&&i==1?'ซ้าย-ขวา':XF[i][0])+' '+XF[i][1];});});
+const gXo=Graph($('#gXo'),{fmin:20,fmax:20000,ymax:12,ymin:-36,yt:[12,0,-12,-24,-36],ticks:TK,
+  curves:()=>{const r=[0,1,2].map(c=>({fn:f=>mag(chZ(c,f)),col:CHC[c],w:2.2,a:chOn(c)?1:.3}));
+    r.push({fn:f=>{let z=[0,0];(stereo()?[0,1]:[0,1,2]).forEach(c=>{if(!chOn(c))return;const h=chZ(c,f);z[0]+=h[0];z[1]+=h[1];});return mag(z);},col:COL.text,w:1.4,dash:[5,4],a:.8});return r;},
+  points:()=>{const p=[{f:S.x1,g:-3,label:'1',col:COL.accent}];if(!stereo())p.push({f:S.x2,g:-3,label:'2',col:COL.accent});return p;},
+  drag:(k,f)=>{if(k===0){S.x1=Math.round(clamp(f,40,300));send({x1:S.x1});}else{S.x2=Math.round(clamp(f,1000,8000)/50)*50;send({x2:S.x2});}ctls.forEach(x=>x());changed();}});
+ctls.push(()=>{$('#xoLegend').innerHTML=CHN().map((n,c)=>`<span><i style="background:${CHC[c]}"></i>${n}</span>`).join('')+'<span><i style="background:var(--text)"></i>'+(stereo()?'ผลรวม ซับ+ซ้าย':'ผลรวม')+'</span>';});
+
+/* ---------- ช่องออก ---------- */
+$('#chSel').innerHTML=[0,1,2].map(c=>`<button data-c="${c}" style="--c:${CHC[c]}"></button>`).join('');
+$$('#chSel button').forEach(b=>{const c=+b.dataset.c;b.onclick=()=>{selCh=c;refreshUI();changed();};
+  ctls.push(()=>{b.textContent=CHN()[c];b.setAttribute('aria-pressed',c===selCh);});});
+const cp=()=>'c'+selCh;
+EqEditor($('#oEq'),cp,()=>selOB,b=>selOB=b,-18,12);
+tog($('#oEqOn'),()=>cp()+'eq','ON','BYPASS');
+$('#oFlat').onclick=()=>{const o={};for(let b=0;b<NB;b++){S[cp()+'g'+b]=0;o[cp()+'g'+b]=0;}send(o);refreshUI();changed();};
+const gOut=Graph($('#gOut'),{fmin:20,fmax:20000,ymax:18,ymin:-18,yt:[12,6,0,-6,-12],ticks:TK,
+  fill:()=>{const p=cp(),b=selOB;if(!S[p+'eq']||!S[p+'e'+b])return null;const c=coef(S[p+'t'+b],S[p+'f'+b],S[p+'g'+b],S[p+'q'+b]);return f=>mag(cH(c,f));},
+  curves:()=>[{fn:f=>mag(chZ(selCh,f)),col:CHC[selCh],w:1.6,dash:[4,3]},{fn:f=>mag(resp(C.eq[selCh],f)),col:COL.accent,w:2.2}],
+  points:()=>{const p=eqPoints(cp());if(!S[cp()+'eq'])p.forEach(x=>x.on=false);return p;},sel:()=>selOB,
+  pick:k=>{if(k!==selOB){selOB=k;refreshUI();}},drag:eqDrag(cp),
+  reset:k=>{S[cp()+'g'+k]=0;send({[cp()+'g'+k]:0});refreshUI();changed();}});
+K($('#c-och'),()=>cp()+'gn','เกน',{min:-30,max:6,step:0.5,def:0,fmt:fmtDb});
+K($('#c-och'),()=>cp()+'dl','ดีเลย์',{min:0,max:20,step:0.02,def:0,fmt:v=>fmtMs(v)+' · '+(v*34.3).toFixed(1)+' cm'});
+tog($('#oInv'),()=>cp()+'iv','กลับเฟส','เฟสปกติ');
+tog($('#oMute'),()=>cp()+'mu','ปิดเสียง','เสียงเปิด',{after:refreshUI});
+tog($('#oSolo'),()=>cp()+'so','ฟังเดี่ยว','ฟังเดี่ยว',{after:refreshUI});
+tog($('#oLim'),()=>cp()+'lo','ON','BYPASS');
+K($('#c-olim'),()=>cp()+'lt','เพดาน (Threshold)',{min:-30,max:0,step:0.5,def:-1,fmt:v=>fmtDb(v)+'FS'});
+K($('#c-olim'),()=>cp()+'la','Attack',{min:0.1,max:50,log:1,round:r1,fmt:v=>(+v).toFixed(1)+' ms'});
+K($('#c-olim'),()=>cp()+'lr','Release',{min:10,max:1000,log:1,round:ri,fmt:v=>Math.round(v)+' ms'});
+ctls.push(()=>{$('#oLegC').style.background=CHC[selCh];$('#oeqSub').textContent='6 แบนด์ · '+CHN()[selCh];});
+
+/* ---------- ตั้งค่า ---------- */
+function modeWarn(newMode){
+  // เปลี่ยนโหมด (ตรงๆ หรือจากพรีเซ็ต) ต้องลดวอลุ่มและย้ายสายลำโพงก่อน
+  const pm=newMode===null?null:newMode;
+  if(pm!==null&&pm===S.mode)return false;
+  const t=pm===null?'ถ้าพรีเซ็ตนี้ใช้โหมดเสียงต่างจากตอนนี้ ระบบจะสลับโหมดทันที\nลดวอลุ่มก่อน และตรวจสายลำโพงให้ตรงโหมด\n\nโหลดพรีเซ็ต?'
+    :'สลับเป็น '+(pm?'สเตอริโอ 2.1':'โมโน 3 ทาง')+'\n\nลดวอลุ่มก่อน แล้วย้ายสายลำโพงให้ตรงโหมดใหม่:\n'+(pm?'DAC1 ซ้าย = ลำโพงซ้าย, DAC1 ขวา = ลำโพงขวา':'DAC1 ซ้าย = ดอกกลาง, DAC1 ขวา = ดอกแหลม')+'\n\nสลับโหมด?';
+  return confirm(t);}
+$$('#modeSel button').forEach(b=>{const m=+b.dataset.m;b.onclick=()=>{if(!modeWarn(m))return;S.mode=m;send({mode:m});flush();refreshUI();changed();};
+  ctls.push(()=>b.setAttribute('aria-pressed',S.mode===m));});
+ctls.push(()=>{$('#modeNote').textContent=stereo()?'DAC1 ซ้าย = ซ้าย (กลาง+แหลม), DAC1 ขวา = ขวา · DAC2 = ซับ (รวม L+R) · แหลมแยกด้วยตัวเก็บประจุหน้าดอก':'รวม L+R เป็นโมโน · DAC1 ซ้าย = กลาง, DAC1 ขวา = แหลม · DAC2 = ซับ';
+  if(!S.dac2)$('#modeNote').textContent+=' · เฟิร์มแวร์ตั้งเป็น DAC ตัวเดียว: ซับรวมอยู่ใน DAC1';});
+K($('#c-in'),'ing','เกนขาเข้า',{min:-30,max:12,step:0.5,def:0,fmt:fmtDb});
+const ip=()=>'i';
+EqEditor($('#iEq'),ip,()=>selIB,b=>selIB=b,-18,12);
+tog($('#iEqOn'),'ieq','ON','BYPASS');
+$('#iFlat').onclick=()=>{const o={};for(let b=0;b<NB;b++){S['ig'+b]=0;o['ig'+b]=0;}send(o);refreshUI();changed();};
+const gIn=Graph($('#gIn'),{fmin:20,fmax:20000,ymax:18,ymin:-18,yt:[12,6,0,-6,-12],ticks:TK,
+  fill:()=>{const b=selIB;if(!S.ieq||!S['ie'+b])return null;const c=coef(S['it'+b],S['if'+b],S['ig'+b],S['iq'+b]);return f=>mag(cH(c,f));},
+  curves:()=>[{fn:f=>mag(resp(C.in,f)),col:COL.signal,w:1.5,dash:[4,3]},{fn:f=>mag(resp(C.ieqOnly,f)),col:COL.accent,w:2.2}],
+  points:()=>{const p=eqPoints('i');if(!S.ieq)p.forEach(x=>x.on=false);return p;},sel:()=>selIB,
+  pick:k=>{if(k!==selIB){selIB=k;refreshUI();}},drag:eqDrag(ip),
+  reset:k=>{S['ig'+k]=0;send({['ig'+k]:0});refreshUI();changed();}});
+tog($('#ssOn'),'ss','ON','BYPASS');
+K($('#c-ss'),'ssf','ความถี่ตัด',{min:15,max:60,step:1,def:25,fmt:fmtHz});
+selBind($('#ssSl'),'sss');
+$('#presetList').innerHTML=[0,1,2,3,4].map(i=>`<div class="preset" data-i="${i}"><b>${i+1}</b><span></span><button class="btn" data-a="load">โหลด</button><button class="btn" data-a="save">บันทึก</button></div>`).join('');
+$$('#presetList .preset').forEach(el=>{const i=+el.dataset.i;
+  el.querySelector('[data-a=load]').onclick=()=>{if(modeWarn(null))cmd('preset_load='+i);};
+  el.querySelector('[data-a=save]').onclick=()=>{const old=S['pn'+i];
+    const n=prompt((old?'บันทึกทับ "'+old+'"\n':'')+'ชื่อพรีเซ็ต '+(i+1)+':',old||('พรีเซ็ต '+(i+1)));
+    if(n===null)return;const name=n.trim().slice(0,10)||('พรีเซ็ต '+(i+1));cmd('preset_save='+i+'&name='+encodeURIComponent(name));};
+  ctls.push(()=>{const n=S['pn'+i],sp=el.querySelector('span');sp.textContent=n||'(ว่าง)';sp.classList.toggle('empty',!n);
+    el.classList.toggle('act',S.pre===i&&!!n);el.querySelector('[data-a=load]').disabled=!n;});});
+$('#lockGo').onclick=()=>{const c=$('#codeIn').value.trim();if(!/^\d{4}$/.test(c)){msg('ใส่รหัสตัวเลข 4 หลัก',1);return;}
+  cmd((S.lk?'unlock=':'lock=')+c);$('#codeIn').value='';};
+$('#lockBtn').onclick=()=>{if(!online){msg('ยังไม่ได้เชื่อมต่อ',1);return;}
+  if(S.lk){const c=prompt('ใส่รหัส 4 หลักเพื่อปลดล็อก');if(c!==null){if(/^\d{4}$/.test(c.trim()))cmd('unlock='+c.trim());else msg('ใส่รหัสตัวเลข 4 หลัก',1);}}
+  else showTab('set');};
+ctls.push(()=>{document.body.classList.toggle('locked',!!S.lk);$('#lockGo').textContent=S.lk?'ปลดล็อก':'ล็อก';
+  $('#lockState').textContent=S.lk?'ล็อกอยู่':'ไม่ได้ล็อก';$('#shackle').setAttribute('d',S.lk?'M8 11V7a4 4 0 0 1 8 0v4':'M8 11V7a4 4 0 0 1 7.5-2');});
+$('#resetBtn').onclick=()=>{if(online&&confirm('กลับเป็นค่าเริ่มต้นทั้งหมด?\n(ไม่ลบพรีเซ็ต)'))cmd('reset');};
+
+/* ---------- วาดกราฟเมื่อค่าเปลี่ยน ---------- */
+const graphs=[gXo,gOut,gIn];
+let dirty=true;
+function changed(){dirty=true;}
+function refreshUI(){ctls.forEach(f=>f());changed();}
+(function frame(){if(dirty){dirty=false;coefs();graphs.forEach(g=>g.draw());}requestAnimationFrame(frame);})();
 
 /* ---------- RTA: วัดเสียงจากไมค์ 1/3 octave ---------- */
 const rta=(()=>{
@@ -613,12 +756,8 @@ const rta=(()=>{
   return {resize};
 })();
 
-/* ---------- ปุ่ม ---------- */
 $('#connBtn').onclick=connect;
-$('#saveBtn').onclick=()=>{if(!online)return;flush();writeLine('save');};
-$('#resetBtn').onclick=()=>{if(online&&confirm('กลับเป็นค่าเริ่มต้นทั้งหมด?')){ps.value='';writeLine('reset');}};
-
-let t0='main';try{t0=localStorage.getItem('dspTab')||'main'}catch(e){}
+let t0='main';try{t0=localStorage.getItem('dspTab2')||'main'}catch(e){}
 refreshUI();setConn(false);showTab(t0);
 })();
 </script>
