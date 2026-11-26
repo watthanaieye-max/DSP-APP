@@ -3,6 +3,7 @@
  *
  * บอร์ด : ESP32-DevKitC WROVER (PSRAM 8MB)
  *         Arduino IDE → Board "ESP32 Wrover Module", Partition Scheme "Huge APP (3MB No OTA)"
+ * Core  : esp32 (Espressif) 3.3.x เท่านั้น (ทดสอบไวยากรณ์กับ 3.3.13) — core 4.x ไม่มี BLEDevice.h
  * ไลบรารี: ESP32-A2DP (pschatzmann) v1.8.11
  *
  * เสียงเข้า : Bluetooth A2DP ชื่อ "ESP32-DSP" (44.1 kHz)
@@ -23,6 +24,10 @@
  */
 
 #include <Arduino.h>
+#if ESP_ARDUINO_VERSION_MAJOR >= 4
+  // core 4.x เปลี่ยนไลบรารี BLE ใหม่ทั้งหมด (ไม่มี BLEDevice.h แล้ว)
+  #error "ใช้บอร์ด esp32 (Espressif) เวอร์ชัน 3.3.x: Tools > Board > Boards Manager > esp32 > เลือก 3.3.13 > Install"
+#endif
 #include <Preferences.h>
 #include <BLEDevice.h>
 #include <BLEServer.h>
