@@ -175,6 +175,11 @@ body.locked .lockcard{opacity:1;pointer-events:auto}
       <div class="ctls" id="c-bal" style="margin-top:12px"></div>
     </div>
     <div class="card ctlcard">
+      <div class="head"><h2 id="tgT">เบส · กลาง · แหลม</h2><button class="btn" id="tgReset">รีเซ็ต 0 dB</button></div>
+      <div class="ctls" id="c-tg"></div>
+      <p class="note">ปรับระดับแต่ละช่องออก (−30 ถึง +6 dB) · แตะตัวเลื่อนสองครั้งเพื่อกลับ 0 dB · ถ้าไฟ LIM ติดบ่อย ให้ลดลง</p>
+    </div>
+    <div class="card ctlcard">
       <div class="head"><h2>ปิดเสียง</h2></div>
       <div class="mutes" id="mutes"></div>
     </div>
@@ -549,6 +554,13 @@ function setVol(v){S.vol=Math.round(clamp(v,VMIN,VMAX)*2)/2;send({vol:S.vol});dr
   knob.addEventListener('keydown',e=>{if(e.key==='ArrowUp'||e.key==='ArrowRight')setVol(S.vol+0.5);if(e.key==='ArrowDown'||e.key==='ArrowLeft')setVol(S.vol-0.5);});
   $('#volUp').onclick=()=>setVol(S.vol+1);$('#volDn').onclick=()=>setVol(S.vol-1);
   ctls.push(drawKnob);})();
+// เกนเบส/กลาง/แหลม = เกนของช่องออก c0/c1/c2 (ตัวเดียวกับในแท็บช่องออก)
+const TGN=()=>stereo()?['เบส (ซับ)','ซ้าย','ขวา']:['เบส (ซับ)','กลาง','แหลม'];
+[0,1,2].forEach(c=>{const box=$('#c-tg');
+  K(box,'c'+c+'gn',()=>TGN()[c],{min:-30,max:6,step:0.5,def:0,fmt:fmtDb});
+  box.lastElementChild.style.setProperty('--accent',CHC[c]);});
+$('#tgReset').onclick=()=>{const o={};[0,1,2].forEach(c=>{S['c'+c+'gn']=0;o['c'+c+'gn']=0;});send(o);refreshUI();changed();};
+ctls.push(()=>{$('#tgT').textContent=stereo()?'เบส · ซ้าย · ขวา':'เบส · กลาง · แหลม';});
 K($('#c-bal'),'bal','บาลานซ์ ซ้าย ← → ขวา',{min:-100,max:100,step:1,def:0,hide:()=>!stereo(),fmt:v=>v==0?'กลาง':(v<0?'ซ้าย ':'ขวา ')+Math.abs(Math.round(v))+'%'});
 $('#mutes').innerHTML=[0,1,2].map(c=>`<button data-c="${c}" aria-pressed="false"><span></span><i>เสียงเปิด</i></button>`).join('');
 $$('#mutes button').forEach(b=>{const c=+b.dataset.c,k='c'+c+'mu';
